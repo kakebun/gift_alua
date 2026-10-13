@@ -143,6 +143,22 @@
   @keyframes fall { to { transform: translateY(calc(100vh + 120px)) rotate(540deg); } }
 
   .soon { font-size: 1.15rem; line-height: 1.6; max-width: 40ch; margin: 0; }
+  .hint { margin: 0; font-size: .95rem; color: var(--rose-deep); opacity: .85; font-style: italic; }
+
+  .choices { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+  .choices .yes {
+    font: 800 1.3rem var(--font-body);
+    padding: 16px 34px; border-radius: 999px; border: none; cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, var(--rose-soft), var(--rose) 55%, var(--rose-deep));
+    box-shadow: 0 10px 24px -8px rgba(158, 15, 58, .7);
+    transition: transform .2s ease;
+    animation: beat 2.4s ease-in-out infinite;
+  }
+  .choices .yes:nth-child(2) { animation-delay: .3s; }
+  .choices .yes:hover { transform: scale(1.08); }
+  .choices .yes:focus-visible { outline: 3px solid var(--rose-deep); outline-offset: 4px; }
+  .final-title { font-size: clamp(2.6rem, 9vw, 3.8rem); color: var(--rose); }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -161,29 +177,27 @@
     </button>
   </section>
 
-  <!-- 2. Вопрос: месяц -->
-  <section class="page" id="p-q1" data-answers="январь,января,январе,january,jan,янв">
+  <!-- Вопросы 1–6 создаются скриптом из списка QUESTIONS и вставляются сюда -->
+
+  <!-- Вопрос 7: приглашение -->
+  <section class="page" id="p-invite">
     <div class="card">
-      <div class="step">Вопрос 1</div>
-      <h2 class="question">В каком месяце мы с тобой начали общаться?</h2>
-      <form class="answer" autocomplete="off">
-        <input id="q1-input" type="text" placeholder="Напиши месяц…" aria-label="Месяц">
-        <button type="submit">Ответить</button>
-      </form>
-      <p class="feedback" aria-live="polite"></p>
-      <div class="flowers" aria-hidden="true"></div>
+      <div class="step">Вопрос 7 из 7</div>
+      <h2 class="question">Свободна ли ты на этих выходных вечером, чтобы пойти со мной в кино?</h2>
+      <div class="choices">
+        <button type="button" class="yes">Да!</button>
+        <button type="button" class="yes">Конечно да!</button>
+      </div>
     </div>
-    <button class="arrow" type="button" aria-label="Дальше" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </button>
   </section>
 
-  <!-- 3. Продолжение -->
-  <section class="page" id="p-next">
+  <!-- Финал -->
+  <section class="page" id="p-final">
     <div class="card">
       <div class="big-heart" aria-hidden="true">❤</div>
-      <h2 class="question">Продолжение следует…</h2>
-      <p class="soon">Скоро здесь появятся новые вопросы и сюрпризы для тебя, моя любимая 💕</p>
+      <h2 class="question final-title">Ура! Это свидание 🎬</h2>
+      <p class="soon">Жду тебя в кино, моя любимая Алуа. Я тебя очень сильно люблю 💕</p>
+      <div class="flowers final-flowers" aria-hidden="true">🌹🌸🌷🌸🌹</div>
     </div>
   </section>
 </main>
@@ -259,6 +273,57 @@
   const helloNext = document.getElementById('hello-next');
   setTimeout(() => helloNext.classList.add('show'), reduce ? 0 : (0.3 + i * 0.07) * 1000 + 400);
 
+  /* ---------- Вопросы ----------
+     exact — ответ должен совпасть целиком; stems — достаточно, чтобы ответ содержал это слово.
+     Регистр, пробелы, знаки и ё/е не важны. */
+  const QUESTIONS = [
+    { q: 'В каком месяце мы с тобой начали общаться?', placeholder: 'Напиши месяц…',
+      stems: ['январ', 'januar'], exact: ['янв', 'jan'],
+      hint: 'Подсказка: это первый месяц года ❄️' },
+    { q: 'Какое моё любимое блюдо из того, что ты готовишь или мы едим вместе?', placeholder: 'Напиши блюдо…',
+      stems: ['бургер', 'burger'],
+      hint: 'Подсказка: начинается на «бур…» 🍔' },
+    { q: 'Кто из нас обычно дольше выбирает, что посмотреть или что покушать?', placeholder: 'Кто же? 😄',
+      stems: ['алуа', 'alua'], exact: ['я', 'ты', 'конечноя', 'конечноты'],
+      right: 'Правильно! 😄 Но я всегда тебя подожду ❤',
+      hint: 'Подсказка: посмотри в зеркало 😉' },
+    { q: 'Какое слово лучше всего описывает твою улыбку?', placeholder: 'Одно слово…',
+      stems: ['красив', 'прекрасн', 'волшебн'],
+      hint: 'Подсказка: красивая, прекрасная или волшебная ✨' },
+    { q: 'Какое наше любимое занятие в тёплые уютные вечера?', placeholder: 'Что мы делаем?',
+      stems: ['кино', 'фильм', 'обним', 'смотр'],
+      hint: 'Подсказка: что-то с экраном и пледом 🎬' },
+    { q: 'Как ты думаешь, скучаю ли я по тебе прямо сейчас?', placeholder: 'Ответь честно 💗',
+      stems: ['конечн', 'сильн', 'очень', 'скучаеш'], exact: ['да', 'дааа', 'даа', 'ага'],
+      right: 'Правильно! Очень-очень скучаю ❤',
+      hint: 'Подсказка: ответ очень короткий и очень тёплый 💗' }
+  ];
+  const TOTAL = QUESTIONS.length + 1;
+  const arrowSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  const invitePage = document.getElementById('p-invite');
+  QUESTIONS.forEach((item, n) => {
+    const sec = document.createElement('section');
+    sec.className = 'page question-page';
+    sec.innerHTML =
+      '<div class="card">' +
+        '<div class="step">Вопрос ' + (n + 1) + ' из ' + TOTAL + '</div>' +
+        '<h2 class="question"></h2>' +
+        '<form class="answer" autocomplete="off">' +
+          '<input id="q' + (n + 1) + '-input" type="text" aria-label="Ответ">' +
+          '<button type="submit">Ответить</button>' +
+        '</form>' +
+        '<p class="feedback" aria-live="polite"></p>' +
+        '<p class="hint" hidden></p>' +
+        '<div class="flowers" aria-hidden="true"></div>' +
+      '</div>' +
+      '<button class="arrow" type="button" aria-label="Дальше" hidden>' + arrowSvg + '</button>';
+    sec.querySelector('.question').textContent = item.q;
+    sec.querySelector('input').placeholder = item.placeholder || 'Твой ответ…';
+    sec.querySelector('.hint').textContent = item.hint || '';
+    sec._q = item;
+    invitePage.before(sec);
+  });
+
   /* ---------- Навигация между страницами ---------- */
   const pages = [...document.querySelectorAll('.page')];
   let current = 0;
@@ -295,8 +360,12 @@
   const norm = s => s.trim().toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я]/g, '');
   const wrongPhrases = ['Не совсем, попробуй ещё 💗', 'Подумай ещё, любимая 😘', 'Почти! Ещё разочек 💕'];
   pages.forEach((page, idx) => {
-    if (!page.dataset.answers) return;
-    const answers = page.dataset.answers.split(',').map(norm);
+    const q = page._q;
+    if (!q) return;
+    const exact = (q.exact || []).map(norm);
+    const stems = (q.stems || []).map(norm);
+    const isRight = v => exact.includes(v) || stems.some(s => v.includes(s));
+    const hint = page.querySelector('.hint');
     const form = page.querySelector('form');
     const input = form.querySelector('input');
     const fb = page.querySelector('.feedback');
@@ -307,9 +376,10 @@
       e.preventDefault();
       const val = norm(input.value);
       if (!val) return;
-      if (answers.includes(val)) {
+      if (isRight(val)) {
         fb.className = 'feedback right';
-        fb.textContent = 'Правильно! ❤';
+        fb.textContent = q.right || 'Правильно! ❤';
+        hint.hidden = true;
         flowers.innerHTML = '';
         ['🌷', '🌸', '🌹', '🌸', '🌷'].forEach((f, j) => {
           const s = document.createElement('span');
@@ -323,10 +393,19 @@
       } else {
         fb.className = 'feedback wrong';
         fb.textContent = wrongPhrases[tries++ % wrongPhrases.length];
+        if (tries >= 2 && hint.textContent) hint.hidden = false;
         form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
       }
     });
     next.addEventListener('click', () => go(idx + 1));
   });
+
+  /* ---------- Приглашение в кино ---------- */
+  const finalIdx = pages.indexOf(document.getElementById('p-final'));
+  invitePage.querySelectorAll('.yes').forEach(b => b.addEventListener('click', () => {
+    go(finalIdx);
+    flowerRain();
+    setTimeout(flowerRain, 1800);
+  }));
 })();
 </script>
