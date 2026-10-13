@@ -1,0 +1,330 @@
+<title>Для Алуа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marck+Script&family=Nunito:wght@400;600;800&display=swap">
+<style>
+  /* Layout: one full-screen "page" at a time, slides in from the right; hearts float behind everything. */
+  :root {
+    --rose-deep: #9e0f3a;
+    --rose: #e0245e;
+    --rose-soft: #ff7aa2;
+    --blush: #ffe3ec;
+    --cream: #fff6f9;
+    --ink: #5a0b24;
+    --ok: #2e9e5b;
+    --font-display: "Marck Script", "Segoe Script", cursive;
+    --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: radial-gradient(120% 90% at 50% 0%, #ffd0de 0%, var(--blush) 45%, #ffc2d4 100%);
+    background-color: var(--blush);
+    overflow: hidden;
+  }
+  #hearts { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+
+  .stage { position: relative; z-index: 1; height: 100%; }
+  .page {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 28px;
+    padding-inline: 20px; padding-block: 32px;
+    text-align: center;
+    opacity: 0; transform: translateX(60px); pointer-events: none;
+    transition: opacity .7s ease, transform .7s ease;
+  }
+  .page.active { opacity: 1; transform: none; pointer-events: auto; }
+  .page.gone { opacity: 0; transform: translateX(-60px); }
+
+  .card {
+    width: min(560px, 100%);
+    background: rgba(255, 246, 249, .82);
+    border: 2px solid rgba(224, 36, 94, .25);
+    border-radius: 28px;
+    padding: 32px 24px;
+    box-shadow: 0 20px 50px -20px rgba(158, 15, 58, .45);
+    backdrop-filter: blur(6px);
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+  }
+
+  /* Greeting */
+  .greeting {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 9vw, 5rem);
+    line-height: 1.15;
+    margin: 0;
+    color: var(--rose);
+    text-shadow: 0 2px 0 #fff, 0 6px 24px rgba(224, 36, 94, .35);
+    text-wrap: balance;
+  }
+  .greeting .line { display: block; }
+  .greeting .ch { display: inline-block; opacity: 0; transform: translateY(18px) scale(.8); animation: letter .6s forwards; }
+  .greeting .ch.sp { width: .3em; }
+  .greeting .big { color: var(--rose-deep); }
+  @keyframes letter { to { opacity: 1; transform: none; } }
+  .big-heart {
+    font-size: clamp(3rem, 12vw, 5rem); line-height: 1;
+    color: var(--rose);
+    animation: beat 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 6px 14px rgba(224, 36, 94, .45));
+  }
+  @keyframes beat { 0%,100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(1); } 45% { transform: scale(1.12); } }
+
+  /* Arrow button */
+  .arrow {
+    width: 76px; height: 76px; border-radius: 50%;
+    border: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--rose-soft), var(--rose) 55%, var(--rose-deep));
+    color: #fff;
+    display: grid; place-items: center;
+    box-shadow: 0 10px 24px -6px rgba(158, 15, 58, .6), inset 0 2px 0 rgba(255,255,255,.35);
+    transition: transform .2s ease, box-shadow .2s ease, opacity .4s ease;
+    animation: nudge 1.8s ease-in-out infinite;
+  }
+  .arrow svg { width: 36px; height: 36px; }
+  .arrow:hover { transform: scale(1.08); }
+  .arrow:focus-visible { outline: 3px solid var(--rose-deep); outline-offset: 4px; }
+  .arrow[hidden] { display: none !important; }
+  .arrow.delayed { opacity: 0; pointer-events: none; }
+  .arrow.delayed.show { opacity: 1; pointer-events: auto; }
+  @keyframes nudge { 0%,100% { translate: 0 0; } 50% { translate: 8px 0; } }
+
+  /* Question */
+  .step { font-size: .8rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rose); }
+  .question {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(2rem, 6.5vw, 3rem); line-height: 1.2;
+    margin: 0; color: var(--rose-deep); text-wrap: balance;
+  }
+  form.answer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+  form.answer input {
+    flex: 1 1 200px; min-width: 0;
+    font: 600 1.15rem var(--font-body);
+    color: var(--ink);
+    padding: 14px 18px;
+    border-radius: 999px;
+    border: 2px solid var(--rose-soft);
+    background: #fff;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  form.answer input::placeholder { color: #c98ba0; }
+  form.answer input:focus { border-color: var(--rose); box-shadow: 0 0 0 4px rgba(224, 36, 94, .18); }
+  form.answer button {
+    font: 800 1.05rem var(--font-body);
+    padding: 14px 26px; border-radius: 999px; border: none; cursor: pointer;
+    color: #fff; background: var(--rose);
+    box-shadow: 0 8px 18px -8px rgba(158, 15, 58, .7);
+  }
+  form.answer button:hover { background: var(--rose-deep); }
+  form.answer button:focus-visible { outline: 3px solid var(--rose-deep); outline-offset: 3px; }
+  .shake { animation: shake .45s; }
+  @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+
+  .feedback { min-height: 1.6em; font-weight: 800; font-size: 1.1rem; margin: 0; }
+  .feedback.wrong { color: var(--rose); }
+  .feedback.right {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(2.4rem, 8vw, 3.4rem); color: var(--ok);
+    animation: pop .6s cubic-bezier(.2, 1.6, .4, 1);
+  }
+  @keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+  .flowers { font-size: 2rem; letter-spacing: .2em; min-height: 1.2em; }
+  .flowers span { display: inline-block; animation: pop .6s cubic-bezier(.2, 1.6, .4, 1) both; }
+
+  .falling { position: fixed; top: -60px; z-index: 5; pointer-events: none; font-size: 2rem; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(calc(100vh + 120px)) rotate(540deg); } }
+
+  .soon { font-size: 1.15rem; line-height: 1.6; max-width: 40ch; margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+
+<canvas id="hearts" aria-hidden="true"></canvas>
+
+<main class="stage">
+  <!-- 1. Приветствие -->
+  <section class="page active" id="p-hello">
+    <div class="big-heart" aria-hidden="true">❤</div>
+    <h1 class="greeting" id="greeting" aria-label="Привет, любимая Алуа, я тебя люблю"></h1>
+    <button class="arrow delayed" id="hello-next" type="button" aria-label="Дальше">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </section>
+
+  <!-- 2. Вопрос: месяц -->
+  <section class="page" id="p-q1" data-answers="январь,января,январе,january,jan,янв">
+    <div class="card">
+      <div class="step">Вопрос 1</div>
+      <h2 class="question">В каком месяце мы с тобой начали общаться?</h2>
+      <form class="answer" autocomplete="off">
+        <input id="q1-input" type="text" placeholder="Напиши месяц…" aria-label="Месяц">
+        <button type="submit">Ответить</button>
+      </form>
+      <p class="feedback" aria-live="polite"></p>
+      <div class="flowers" aria-hidden="true"></div>
+    </div>
+    <button class="arrow" type="button" aria-label="Дальше" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </section>
+
+  <!-- 3. Продолжение -->
+  <section class="page" id="p-next">
+    <div class="card">
+      <div class="big-heart" aria-hidden="true">❤</div>
+      <h2 class="question">Продолжение следует…</h2>
+      <p class="soon">Скоро здесь появятся новые вопросы и сюрпризы для тебя, моя любимая 💕</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Плавающие сердечки на фоне ---------- */
+  const cv = document.getElementById('hearts');
+  const ctx = cv.getContext('2d');
+  let W, H, hearts = [];
+  const colors = ['#e0245e', '#ff7aa2', '#9e0f3a', '#ff4d7e', '#ffb3c8'];
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function spawn(initial) {
+    return {
+      x: Math.random() * W,
+      y: initial ? Math.random() * H : H + 30,
+      s: 8 + Math.random() * 18,
+      v: .3 + Math.random() * .8,
+      sway: Math.random() * Math.PI * 2,
+      a: .25 + Math.random() * .5,
+      c: colors[Math.floor(Math.random() * colors.length)]
+    };
+  }
+  function drawHeart(x, y, s, c, a) {
+    ctx.save();
+    ctx.globalAlpha = a; ctx.fillStyle = c;
+    ctx.translate(x, y); ctx.scale(s / 16, s / 16);
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-14, -4, -8, -16, 0, -8);
+    ctx.bezierCurveTo(8, -16, 14, -4, 0, 5);
+    ctx.fill();
+    ctx.restore();
+  }
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (const h of hearts) {
+      h.y -= h.v; h.sway += .02;
+      if (h.y < -30) Object.assign(h, spawn(false));
+      drawHeart(h.x + Math.sin(h.sway) * 12, h.y, h.s, h.c, h.a);
+    }
+    if (!reduce) requestAnimationFrame(tick);
+  }
+  resize();
+  hearts = Array.from({ length: Math.min(45, Math.round(W / 22)) }, () => spawn(true));
+  window.addEventListener('resize', resize);
+  tick();
+
+  /* ---------- Приветствие по буквам ---------- */
+  const g = document.getElementById('greeting');
+  const lines = [['Привет,', false], ['любимая Алуа,', true], ['я тебя люблю', false]];
+  let i = 0;
+  for (const [text, big] of lines) {
+    const line = document.createElement('span');
+    line.className = 'line' + (big ? ' big' : '');
+    line.setAttribute('aria-hidden', 'true');
+    for (const ch of text) {
+      const s = document.createElement('span');
+      s.className = 'ch' + (ch === ' ' ? ' sp' : '');
+      s.textContent = ch === ' ' ? ' ' : ch;
+      s.style.animationDelay = (0.3 + i++ * 0.07) + 's';
+      line.appendChild(s);
+    }
+    g.appendChild(line);
+  }
+  const helloNext = document.getElementById('hello-next');
+  setTimeout(() => helloNext.classList.add('show'), reduce ? 0 : (0.3 + i * 0.07) * 1000 + 400);
+
+  /* ---------- Навигация между страницами ---------- */
+  const pages = [...document.querySelectorAll('.page')];
+  let current = 0;
+  function go(n) {
+    if (n < 0 || n >= pages.length) return;
+    pages[current].classList.remove('active');
+    pages[current].classList.add('gone');
+    current = n;
+    pages[current].classList.remove('gone');
+    pages[current].classList.add('active');
+    const inp = pages[current].querySelector('input');
+    if (inp) setTimeout(() => inp.focus({ preventScroll: true }), 700);
+  }
+  helloNext.addEventListener('click', () => go(1));
+
+  /* ---------- Цветочный дождь ---------- */
+  const flowerSet = ['🌸', '🌷', '🌹', '🌺', '💐', '🌼', '💖'];
+  function flowerRain() {
+    if (reduce) return;
+    for (let k = 0; k < 28; k++) {
+      const f = document.createElement('div');
+      f.className = 'falling';
+      f.textContent = flowerSet[k % flowerSet.length];
+      f.style.left = Math.random() * 100 + 'vw';
+      f.style.fontSize = (1.4 + Math.random() * 1.6) + 'rem';
+      f.style.animationDuration = (2.8 + Math.random() * 2.4) + 's';
+      f.style.animationDelay = Math.random() * 1.2 + 's';
+      document.body.appendChild(f);
+      f.addEventListener('animationend', () => f.remove());
+    }
+  }
+
+  /* ---------- Вопросы ---------- */
+  const norm = s => s.trim().toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я]/g, '');
+  const wrongPhrases = ['Не совсем, попробуй ещё 💗', 'Подумай ещё, любимая 😘', 'Почти! Ещё разочек 💕'];
+  pages.forEach((page, idx) => {
+    if (!page.dataset.answers) return;
+    const answers = page.dataset.answers.split(',').map(norm);
+    const form = page.querySelector('form');
+    const input = form.querySelector('input');
+    const fb = page.querySelector('.feedback');
+    const flowers = page.querySelector('.flowers');
+    const next = page.querySelector('.arrow');
+    let tries = 0;
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const val = norm(input.value);
+      if (!val) return;
+      if (answers.includes(val)) {
+        fb.className = 'feedback right';
+        fb.textContent = 'Правильно! ❤';
+        flowers.innerHTML = '';
+        ['🌷', '🌸', '🌹', '🌸', '🌷'].forEach((f, j) => {
+          const s = document.createElement('span');
+          s.textContent = f; s.style.animationDelay = (j * 0.12) + 's';
+          flowers.appendChild(s);
+        });
+        input.disabled = true;
+        form.querySelector('button').disabled = true;
+        next.hidden = false;
+        flowerRain();
+      } else {
+        fb.className = 'feedback wrong';
+        fb.textContent = wrongPhrases[tries++ % wrongPhrases.length];
+        form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
+      }
+    });
+    next.addEventListener('click', () => go(idx + 1));
+  });
+})();
+</script>
