@@ -1,0 +1,49 @@
+[
+ {"id":"intro","pre":0.8,"post":1.0,"lines":[
+  "Today, you are a Roman legionary.",
+  "The year is one hundred AD, and the empire is at its peak.",
+  "Let's see how long you survive."]},
+ {"id":"tent","pre":0.6,"post":0.8,"lines":[
+  "You wake up before sunrise.",
+  "Somewhere outside, a horn blasts.",
+  "You share this tiny leather tent with seven other guys.",
+  "Yes. Seven. Personal space hasn't been invented yet."]},
+ {"id":"breakfast","pre":0.5,"post":0.8,"lines":[
+  "Breakfast is puls, a simple grain porridge.",
+  "To drink, you get posca: water mixed with sour wine vinegar.",
+  "Delicious? No. Free? Also no. Your food comes out of your pay."]},
+ {"id":"gear","pre":0.5,"post":0.8,"lines":[
+  "Then comes the gear.",
+  "Helmet.",
+  "Armor.",
+  "A big, curved shield.",
+  "Two javelins.",
+  "Your sword.",
+  "And a pack full of food, tools and cooking pots.",
+  "Altogether, around thirty kilograms.",
+  "People called Roman soldiers Marius's mules. Now you know why."]},
+ {"id":"march","pre":0.5,"post":0.8,"lines":[
+  "Now, you march.",
+  "About thirty kilometers, in roughly five hours.",
+  "Through dust, mud and heat.",
+  "And no complaining. Your centurion carries a vine stick, and he is not afraid to use it."]},
+ {"id":"camp","pre":0.5,"post":0.8,"lines":[
+  "Finally, you stop. Time to rest?",
+  "Of course not.",
+  "Every evening on the march, you dig a ditch, build a wall, and set up a whole fortified camp.",
+  "Tomorrow, you'll pack it all up and do it again."]},
+ {"id":"pay","pre":0.5,"post":0.8,"lines":[
+  "Your pay? About three hundred denarii a year.",
+  "Not bad. Until the deductions arrive.",
+  "Food. Boots. Equipment. Even a burial fund, just in case."]},
+ {"id":"night","pre":0.6,"post":1.0,"lines":[
+  "At night, you finally sit by the fire.",
+  "Your feet hurt. Your back hurts. Everything hurts.",
+  "And you've signed up for twenty five years.",
+  "But if you survive, you'll retire with a big reward: money, or even your own piece of land.",
+  "Maybe... it's worth it."]},
+ {"id":"outro","pre":0.5,"post":2.5,"lines":[
+  "Would you survive a day in the Roman army?",
+  "Tell me in the comments.",
+  "And subscribe, because next time, we're traveling somewhere even worse."]}
+]
