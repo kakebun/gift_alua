@@ -136,6 +136,9 @@ const EMO = {
   fear: { bL: [1, -10, -20], bR: [1, -10, -20], e: { open: 1, happy: 0 }, m: { w: 30, curve: -.3, open: .8, round: .6, wob: 1, tongue: .5 } },
   smug: { bL: [1, -10, -4], bR: [1, 0, 16], e: { open: 1, happy: 0 }, m: { w: 30, curve: .9, open: 0, round: 0, wob: 0, tongue: 0, x: 4 } },
   sleepy: { bL: [0, 0, 0], bR: [0, 0, 0], e: { open: 0, happy: 0 }, m: { w: 18, curve: 0, open: 0, round: 0, wob: 0, tongue: 0 } },
+  disgust: { bL: [1, 4, 16], bR: [1, -8, -6], e: { open: .6, happy: 0 }, m: { w: 24, curve: -.8, open: .12, round: 0, wob: .3, tongue: 0, x: 6 } },
+  curious: { bL: [1, -12, -4], bR: [1, -4, 4], e: { open: 1, happy: 0 }, m: { w: 12, curve: .1, open: .25, round: .6, wob: 0, tongue: 0 } },
+  talk: { bL: [0, 0, 0], bR: [0, 0, 0], e: { open: 1, happy: 0 }, m: { w: 26, curve: .3, open: .5, round: 0, wob: 0, tongue: .3 } },
   dazed: { bL: [1, -4, -10], bR: [1, 4, 8], e: { open: .55, happy: 0 }, m: { w: 18, curve: -.3, open: 0, round: 0, wob: 0, tongue: 0, x: 4 } },
 };
 // project a point on the head sphere (front-facing coords) by yaw (deg). returns [x, y, depth 0..1]

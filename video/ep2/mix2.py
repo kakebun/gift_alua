@@ -96,6 +96,66 @@ SFX = {
     'squeak': lambda: norm(np.concatenate([sweep(900, 1500, .12) * np.hanning(int(.12 * SR)), sweep(1400, 900, .15) * np.hanning(int(.15 * SR))]), .5),
     'fanfare': None,
 }
+def _coin():
+    d = .6; t = t_(d); return norm(sum(np.sin(2 * np.pi * fq * t) * np.exp(-t * dc) for fq, dc in [(2200, 8), (3350, 10), (4900, 14), (6100, 18)]), .6)
+def _coins():
+    out = np.zeros(int(1.0 * SR))
+    for k in range(7): put(out, _coin() * rng.uniform(.4, 1), rng.uniform(0, .45))
+    return norm(out, .8)
+def _crowd(d=3.5, cheer=1.0):
+    x = murmur(d) * .6 + bp(noise(d), 300, 3000) * env(int(d * SR), .3, .8) * .5 * cheer
+    for k in range(int(d * 3)): put(x, norm(bp(saw(rng.uniform(250, 500), .4, .05, 6), 300, 2500), .3) * env(int(.4 * SR), .05, .2), rng.uniform(0, d - .5))
+    return norm(x, .9)
+def _hooves(d=4):
+    out = np.zeros(int(d * SR)); k = 0
+    while k < d - .1:
+        put(out, bp(noise(.05), 200, 1500) * np.exp(-t_(.05) * 60) * rng.uniform(.5, 1), k); k += rng.choice([.09, .12, .2])
+    return norm(out + lp(noise(d), 200) * .2, .8) * env(int(d * SR), .2, .5)
+def _fire(d=4):
+    x = lp(noise(d), 500) * .5
+    for _ in range(int(d * 14)): put(x, hp(noise(.012), 1800) * rng.uniform(.2, .8), rng.uniform(0, d - .1))
+    return norm(x, .7) * env(int(d * SR), .3, .6)
+def _water(d=2.5): return norm(bp(noise(d), 400, 3000) * (.6 + .4 * np.abs(np.sin(2 * np.pi * 3 * t_(d)))), .4) * env(int(d * SR), .3, .5)
+def _crash():
+    x = lp(noise(2.0), 300) * np.exp(-t_(2.0) * 2) + hp(noise(2.0), 1500) * np.exp(-t_(2.0) * 5) * .5
+    for k in range(8): put(x, bp(noise(.1), 800, 4000) * np.exp(-t_(.1) * 30) * .6, .1 + k * .12)
+    return norm(x, .95)
+SFX.update({
+    'coin': _coin, 'coins': _coins, 'crowd': lambda: _crowd(4.0), 'hooves': lambda: _hooves(5.0), 'fire': lambda: _fire(5.0), 'water': lambda: _water(2.5), 'crash': _crash,
+    'splat': lambda: norm(lp(noise(.4), 900) * np.exp(-t_(.4) * 10) + ping(110, .3, 20) * .6, .9),
+    'cart': lambda: norm(sum(np.roll(np.pad(bp(noise(.06), 300, 2000) * np.exp(-t_(.06) * 50), (0, int(3.0 * SR))), int(k * .17 * SR)) for k in range(16)) * .7 + lp(noise(3.06), 150) * .3, .7),
+    'clank': lambda: norm(sum(np.sin(2 * np.pi * fq * t_(.6)) * np.exp(-t_(.6) * dc) * a for fq, dc, a in [(523, 7, 1), (1237, 9, .7), (1873, 12, .5), (2964, 16, .35)]), .8),
+    'clang': lambda: norm(sum(np.sin(2 * np.pi * fq * t_(.9)) * np.exp(-t_(.9) * dc) * a for fq, dc, a in [(700, 5, 1), (1650, 7, .7), (2600, 10, .5), (3900, 14, .35)]) + hp(noise(.9), 3000) * np.exp(-t_(.9) * 40) * .5, .9),
+    'moo': lambda: norm(lp(saw(110, 1.2, .03, 4), 700) * env(int(1.2 * SR), .1, .4) * np.linspace(1, .6, int(1.2 * SR)), .6),
+    'growl': lambda: norm(lp(noise(1.4), 220) * (1 + .8 * np.sin(2 * np.pi * 9 * t_(1.4))) * env(int(1.4 * SR), .1, .4) + lp(saw(60, 1.4, .1, 3), 300) * .3, .8),
+    'flutter': lambda: norm(bp(noise(1.5), 800, 4000) * (np.sin(2 * np.pi * 22 * t_(1.5)) > 0) * env(int(1.5 * SR), .05, .4), .3),
+    'sparkle': lambda: norm(sum(np.roll(np.pad(ping(fq, .6, 7), (0, int(.6 * SR))), int(k * .07 * SR)) for k, fq in enumerate([1568, 1976, 2349, 2637, 3136, 3951])), .55),
+    'pour': lambda: norm(bp(noise(1.6), 300, 1800) * (.7 + .3 * np.sin(2 * np.pi * 7 * t_(1.6))) * env(int(1.6 * SR), .1, .3), .5),
+    'buzz': lambda: norm(bp(saw(190, 2.0, .05, 9), 200, 2000) * env(int(2.0 * SR), .1, .4), .25),
+    'gulp': lambda: norm(np.concatenate([np.concatenate([sweep(500, 200, .12) * np.hanning(int(.12 * SR)), np.zeros(int(.18 * SR))]) for _ in range(3)]), .6),
+    'tvbeep': lambda: norm(np.sin(2 * np.pi * 1000 * t_(.25)) * env(int(.25 * SR), .01, .05), .4),
+    'scribble': lambda: norm(bp(noise(1.0), 2000, 7000) * (.3 + .7 * (np.sin(2 * np.pi * 11 * t_(1.0)) > 0)) * env(int(1.0 * SR), .02, .1), .35),
+    'rumble': lambda: norm(lp(noise(2.0), 120) * env(int(2.0 * SR), .4, .6), .8),
+    'thunder': lambda: norm(lp(noise(3.0), 400) * np.exp(-t_(3.0) * 1.2) + hp(noise(3.0), 2000) * np.exp(-t_(3.0) * 12) * .8, .95),
+    'baa': lambda: norm(lp(saw(330, .8, .06, 12), 1800) * env(int(.8 * SR), .05, .3), .4),
+    'inhale': lambda: norm(bp(noise(.7), 800, 3000) * np.linspace(0, 1, int(.7 * SR)), .3),
+    'sneeze': lambda: norm(np.concatenate([bp(noise(.08), 1000, 5000) * .6, bp(noise(.4), 500, 6000) * np.exp(-t_(.4) * 8)]), .8),
+    'sizzle': lambda: norm(hp(noise(2.0), 3000) * env(int(2.0 * SR), .2, .5), .3),
+    'splash': lambda: norm(bp(noise(1.0), 300, 5000) * np.exp(-t_(1.0) * 4) + lp(noise(1.0), 200) * np.exp(-t_(1.0) * 10), .9),
+    'shiver': lambda: norm(bp(noise(1.2), 300, 2000) * (np.sin(2 * np.pi * 28 * t_(1.2)) > 0) * env(int(1.2 * SR), .02, .2), .5),
+    'scrape': lambda: norm(bp(noise(1.6), 1500, 5000) * np.abs(np.sin(2 * np.pi * 3.5 * t_(1.6))), .3),
+    'sting': lambda: norm(lp(saw(73.4, 1.8) + saw(110, 1.8) * .7 + saw(146.8, 1.8) * .5, 900) * np.exp(-t_(1.8) * 1.6), .8),
+    'squish': lambda: norm(lp(noise(.4), 900) * np.sin(np.pi * t_(.4) / .4) + sweep(300, 120, .4) * .4, .6),
+    'tiptoe': lambda: norm(sum(np.roll(np.pad(bp(noise(.04), 1000, 4000) * np.exp(-t_(.04) * 80), (0, int(1.6 * SR))), int(k * .4 * SR)) for k in range(4)), .3),
+    'roar_lion': lambda: norm(lp(saw(90, 1.4, .08, 6) + noise(1.4) * .5, 900) * env(int(1.4 * SR), .1, .6), .7),
+    'fanfare_s': lambda: norm(np.concatenate([sum(brass(NOTE(m - 12), .25) for m in [62, 66, 69]), sum(brass(NOTE(m - 12), .9) for m in [67, 71, 74])]), .8),
+    'brawl': lambda: norm(sum(np.roll(np.pad(lp(noise(.12), 600) * np.exp(-t_(.12) * 30), (0, int(1.8 * SR))), int(rng.uniform(0, 1.6) * SR)) for _ in range(10)), .7),
+    'wind': lambda: norm(bp(noise(4.0), 200, 900) * (0.6 + .4 * np.sin(2 * np.pi * .5 * t_(4.0))) * env(int(4 * SR), .8, 1), .4),
+    'march': lambda: norm(sum(np.roll(np.pad(bp(noise(.1), 200, 1500) * np.exp(-t_(.1) * 30), (0, int(6 * SR))), int(k * .46 * SR)) for k in range(13)), .6),
+    'magic': lambda: SFX['shimmer'](),
+    'type': lambda: norm(sum(np.roll(np.pad(hp(noise(.025), 2500) * np.exp(-t_(.025) * 200), (0, int(1.4 * SR))), int((k * .13) * SR)) for k in range(10)), .4),
+    'click': lambda: norm(hp(noise(.03), 2000) * np.exp(-t_(.03) * 150), .8),
+})
 sfx = np.zeros(N)
 def scene(sid): return next(s for s in tl if s["id"] == sid)
 for t0, name, vol, sid in cues:
