@@ -88,7 +88,7 @@ SFX = {
     'blink': lambda: norm(lp(noise(.08), 1200) * np.hanning(int(.08 * SR)), .3),
     'murmur': lambda: murmur(3.5),
     'steps': lambda: norm(sum(np.roll(np.pad(bp(noise(.08), 300, 2500) * np.exp(-t_(.08) * 50), (0, int(1.1 * SR))), int(k * .28 * SR)) for k in range(4)), .6),
-    'shout': lambda: norm(brass(NOTE(43), .35) + brass(NOTE(42), .45) * .8, .8),
+    'shout': lambda: norm(np.concatenate([brass(NOTE(43), .35), brass(NOTE(42), .45) * .8]), .8),
     'stamp': lambda: norm(ping(90, .3, 18) + hp(noise(.3), 1500) * np.exp(-t_(.3) * 40) * .6, .9),
     'rattle': lambda: norm(bp(noise(1.6), 2000, 8000) * (.5 + .5 * np.sign(np.sin(2 * np.pi * 11 * t_(1.6)))) * env(int(1.6 * SR), .05, .3), .45),
     'fanfare': None,
