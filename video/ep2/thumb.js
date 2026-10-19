@@ -71,8 +71,15 @@ function thumbA() {
   s += sticker(hero({ x: MX, y: GROUND, s: S, yaw: 12, headYaw: -6, t: 0, idle: 0, ground: false, face: PANIC, look: [-.35, -.05], sweat: 1.6, blink: 0, wave: 2.4, wind: [90, -50], tilt: -6,
     arms: { L: { to: [HX, HY] }, R: { to: [104, -690] } }, holdL: g('translate(0 -6) rotate(-12) scale(1.1)', crackedHourglass(.62)), legsVisible: false }));
   for (let i = 0; i < 5; i++) { const a = 110 + i * 38; s += sparkle(MX + HX * S + Math.cos(rad(a)) * 210, GROUND + (HY - 100) * S + Math.sin(rad(a)) * 170, .9 + (i % 3) * .25, a); }
-  s += bigText('STUCK IN', 480, 150, 160, '#ffffff', { rot: -4 });
-  s += bigText('100 AD', 500, 355, 290, '#ffd23f', { rot: -4 });
+  if (window.THUMB_TEXT === 'title') {
+    s += bigText('WHAT IF YOU', 500, 115, 128, '#ffffff', { rot: -3 });
+    s += bigText('WOKE UP IN', 500, 250, 128, '#ffffff', { rot: -3 });
+    s += bigText('ANCIENT', 505, 405, 168, '#ffd23f', { rot: -3 });
+    s += bigText('ROME?', 505, 580, 200, '#ffd23f', { rot: -3 });
+  } else {
+    s += bigText('STUCK IN', 480, 150, 160, '#ffffff', { rot: -4 });
+    s += bigText('100 AD', 500, 355, 290, '#ffd23f', { rot: -4 });
+  }
   return TDEFS + s;
 }
 
@@ -123,4 +130,4 @@ function thumbC() {
   s += bigText('WHERE AM I?!', 960, 110, 170, '#ffffff', { rot: -2 });
   return TDEFS + s;
 }
-window.THUMBS = { A: thumbA, B: thumbB, C: thumbC };
+window.THUMBS = { A: thumbA, B: thumbB, C: thumbC, T: () => { window.THUMB_TEXT = 'title'; const r = thumbA(); window.THUMB_TEXT = ''; return r; } };
