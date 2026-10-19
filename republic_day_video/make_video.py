@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H, FPS = 1920, 1080, 30
-DURATION = 152.0
+DURATION = 162.0
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "republic_day.mp4")
 AUDIO = os.path.join(HERE, "music.wav")
@@ -293,20 +293,20 @@ def scene_flag(t):           # 12 – 26
     return img
 
 
-def scene_declaration(t):    # 26 – 42
+def scene_declaration(t):    # 26 – 54
     a = assets()
     img = base("bg_navy")
     starfield(img, t + 30, 0.5)
-    frame_borders(img, fade(t, 0, 16.4, 1, 0.6))
+    frame_borders(img, fade(t, 0, 28.4, 1, 0.6))
     sun = rotated(a["sun_mid"], t * 4)
-    paste_alpha(img, sun, (W / 2 - sun.width / 2, 120), fade(t, 0, 16.4, 1, 0.6) * 0.9)
-    text(img, "1990", 460, 150, fade(t, 0.6, 16.4, 1.2, 0.6), GOLD, serif=True)
-    text(img, "жылғы 25 қазан  ·  25 октября 1990 года", 575, 44, fade(t, 1.4, 16.4, 1.2, 0.6))
+    paste_alpha(img, sun, (W / 2 - sun.width / 2, 120), fade(t, 0, 28.4, 1, 0.6) * 0.9)
+    text(img, "1990", 460, 150, fade(t, 0.6, 28.4, 1.2, 0.6), GOLD, serif=True)
+    text(img, "жылғы 25 қазан  ·  25 октября 1990 года", 575, 44, fade(t, 1.4, 28.4, 1.2, 0.6))
     wrap_text(img, "Қазақ КСР-інің Мемлекеттік егемендігі туралы декларация қабылданды",
-              700, 46, 1500, fade(t, 3.0, 16.4, 1.2, 0.6), GOLD, serif=True, bold=True)
+              700, 46, 1500, fade(t, 3.0, 28.4, 1.2, 0.6), GOLD, serif=True, bold=True)
     wrap_text(img, "Принята Декларация о государственном суверенитете Казахской ССР — "
                    "первый шаг к независимости нашей страны",
-              850, 38, 1450, fade(t, 5.0, 16.4, 1.2, 0.6))
+              850, 38, 1450, fade(t, 5.0, 28.4, 1.2, 0.6))
     return img
 
 
@@ -324,13 +324,13 @@ TIMELINE = [
 ]
 
 
-def scene_timeline(t):       # 42 – 74 (32 c)
+def scene_timeline(t):       # 80 – 100
     img = base("bg_navy")
     starfield(img, t + 60, 0.4)
-    al = fade(t, 0, 32.4, 1, 0.6)
+    al = fade(t, 0, 20.4, 1, 0.6)
     frame_borders(img, al)
     text(img, "ТАРИХ БЕЛЕСТЕРІ  ·  ВЕХИ ИСТОРИИ", 175, 50, al, GOLD, serif=True)
-    seg = 32.0 / len(TIMELINE)
+    seg = 20.0 / len(TIMELINE)
     idx = min(int(t // seg), len(TIMELINE) - 1)
     lt = t - idx * seg
     d = ImageDraw.Draw(img)
@@ -354,6 +354,50 @@ def scene_timeline(t):       # 42 – 74 (32 c)
     return img
 
 
+HIST = [("1995", "25 қазан — ұлттық мереке", "25 октября объявлено национальным праздником"),
+        ("2009", "Мереке мәртебесін жоғалтты", "Праздник утратил статус национального"),
+        ("2022", "Республика күні қайта оралды", "По инициативе Президента К.-Ж. Токаева День Республики вновь стал главным национальным праздником")]
+
+
+def scene_history(t):        # 54 – 80
+    a = assets()
+    img = base("bg_navy")
+    starfield(img, t + 45, 0.4)
+    al = fade(t, 0, 26.4, 1, 0.6)
+    frame_borders(img, al)
+    text(img, "МЕРЕКЕНІҢ ТАРИХЫ  ·  ИСТОРИЯ ПРАЗДНИКА", 175, 50, al, GOLD, serif=True)
+    starts = [1.0, 6.5, 11.0]
+    cw, ch, gap = 540, 600, 50
+    x0 = (W - 3 * cw - 2 * gap) / 2
+    for i, (yr, kz, ru) in enumerate(HIST):
+        ca = fade(t, starts[i], 26.4, 1.0, 0.6) * al
+        if ca <= 0:
+            continue
+        x = x0 + i * (cw + gap)
+        y = 290 + (1 - ease((t - starts[i]) / 1.0)) * 60
+        card = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+        ImageDraw.Draw(card).rounded_rectangle([0, 0, cw - 1, ch - 1], 28,
+            fill=(0, 90, 120, 190) if i != 1 else (40, 50, 65, 190), outline=GOLD + (255,), width=4)
+        paste_alpha(img, card, (x, y), ca)
+        text(img, yr, y + 110, 110, ca, GOLD if i != 1 else (190, 200, 210), serif=True, x=x + cw / 2)
+        cx = x + cw / 2
+        f = font(34, True, True)
+        # перенос строк внутри карточки
+        for blk, (txt, size, col, b, yy) in enumerate([(kz, 34, WHITE, True, y + 250), (ru, 30, (200, 230, 240), False, y + 355)]):
+            fnt = font(size, b, b)
+            words, lines, cur = txt.split(), [], ""
+            for wd in words:
+                tt = (cur + " " + wd).strip()
+                if fnt.getlength(tt) > cw - 60 and cur:
+                    lines.append(cur); cur = wd
+                else:
+                    cur = tt
+            lines.append(cur)
+            for li, ln in enumerate(lines):
+                text(img, ln, yy + li * size * 1.3, size, ca, col, serif=b, bold=b, x=cx, shadow=False)
+    return img
+
+
 def make_shield(size):
     S = 3
     s = size * S
@@ -373,22 +417,22 @@ def make_shield(size):
     return im.resize((size, int(size * 1.2)), Image.LANCZOS)
 
 
-def scene_army(t):           # 74 – 100 (26 c)
+def scene_army(t):           # 100 – 120
     a = assets()
     if "shield" not in a:
         a["shield"] = make_shield(260)
     img = base("bg_navy")
     starfield(img, t + 90, 0.35)
-    al = fade(t, 0, 26.4, 1, 0.6)
+    al = fade(t, 0, 20.4, 1, 0.6)
     frame_borders(img, al)
     sh = a["shield"]
     k = 0.85 + 0.15 * ease(t / 1.5)
     shs = sh.resize((int(sh.width * k), int(sh.height * k)), Image.LANCZOS)
     paste_alpha(img, shs, (W / 2 - shs.width / 2, 140 + (1 - k) * 100), al)
-    text(img, "ҚАЗАҚСТАН РЕСПУБЛИКАСЫНЫҢ ҚАРУЛЫ КҮШТЕРІ", 500, 54, fade(t, 0.8, 26.4, 1, 0.6), GOLD, serif=True)
-    text(img, "Вооружённые Силы Республики Казахстан", 570, 38, fade(t, 1.4, 26.4, 1, 0.6))
-    if t < 12.5:
-        q = fade(t, 2.5, 12.6, 1.2, 0.6) * al
+    text(img, "ҚАЗАҚСТАН РЕСПУБЛИКАСЫНЫҢ ҚАРУЛЫ КҮШТЕРІ", 500, 54, fade(t, 0.8, 20.4, 1, 0.6), GOLD, serif=True)
+    text(img, "Вооружённые Силы Республики Казахстан", 570, 38, fade(t, 1.4, 20.4, 1, 0.6))
+    if t < 10.0:
+        q = fade(t, 2.5, 10.1, 1.2, 0.6) * al
         wrap_text(img, "«Қазақстан Республикасын қорғау — оның әрбір азаматының қасиетті парызы және міндеті»",
                   730, 44, 1500, q, WHITE, serif=True, bold=True)
         wrap_text(img, "«Защита Республики Казахстан является священным долгом и обязанностью каждого её гражданина»",
@@ -401,11 +445,11 @@ def scene_army(t):           # 74 – 100 (26 c)
         cw, ch, gap = 560, 220, 40
         x0 = (W - 3 * cw - 2 * gap) / 2
         for i, (kz, ru) in enumerate(cards):
-            ca = fade(t, 12.8 + i * 0.6, 26.4, 0.9, 0.6) * al
+            ca = fade(t, 10.2 + i * 0.6, 20.4, 0.9, 0.6) * al
             if ca <= 0:
                 continue
             x = x0 + i * (cw + gap)
-            y = 700 + (1 - ease((t - 12.8 - i * 0.6) / 0.9)) * 50
+            y = 700 + (1 - ease((t - 10.2 - i * 0.6) / 0.9)) * 50
             card = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
             cd = ImageDraw.Draw(card)
             cd.rounded_rectangle([0, 0, cw - 1, ch - 1], 24, fill=(0, 90, 120, 200), outline=GOLD + (255,), width=4)
@@ -418,46 +462,46 @@ def scene_army(t):           # 74 – 100 (26 c)
 VALUES = [("БІРЛІК", "единство"), ("ЕРЛІК", "мужество"), ("АДАЛДЫҚ", "верность"), ("ОТАНСҮЙГІШТІК", "патриотизм")]
 
 
-def scene_values(t):         # 100 – 122 (22 c)
+def scene_values(t):         # 120 – 134
     a = assets()
     img = base("bg_sky")
     flag = wave_flag(a["flag_small"], t, 900)
-    al = fade(t, 0, 22.4, 1, 0.6)
+    al = fade(t, 0, 14.4, 1, 0.6)
     dim = Image.new("RGBA", (W, H), (0, 25, 45, 140))
     img.alpha_composite(dim)
     paste_alpha(img, flag, (W / 2 - flag.width / 2, 70), al * 0.35)
     paste_alpha(img, a["orn_v"], (40, 0), al * 0.8)
     paste_alpha(img, a["orn_v"], (W - 110, 0), al * 0.8)
     for i, (kz, ru) in enumerate(VALUES):
-        st = 1.0 + i * 2.2
-        va = fade(t, st, 22.4, 1.0, 0.6)
+        st = 0.8 + i * 1.9
+        va = fade(t, st, 14.4, 1.0, 0.6)
         y = 210 + i * 200
         text(img, kz, y + (1 - ease((t - st) / 1.0)) * 30, 96, va, GOLD, serif=True)
         text(img, ru, y + 75, 36, va, WHITE, bold=False)
     return img
 
 
-def scene_congrats(t):       # 122 – 142 (20 c)
+def scene_congrats(t):       # 134 – 152
     a = assets()
     img = base("bg_navy")
     starfield(img, t + 120, 0.5)
-    al = fade(t, 0, 20.4, 1, 0.6)
+    al = fade(t, 0, 18.4, 1, 0.6)
     frame_borders(img, al)
     sun = rotated(a["sun_mid"], -t * 4)
     paste_alpha(img, sun, (W / 2 - sun.width / 2, 110), al * 0.9)
     text(img, "Құрметті профессор-оқытушылар құрамы, курсанттар мен студенттер!", 420, 42,
-         fade(t, 0.8, 20.4, 1.2, 0.6), GOLD, serif=True)
-    text(img, "Уважаемые преподаватели, курсанты и студенты!", 490, 38, fade(t, 1.6, 20.4, 1.2, 0.6))
+         fade(t, 0.8, 18.4, 1.2, 0.6), GOLD, serif=True)
+    text(img, "Уважаемые преподаватели, курсанты и студенты!", 490, 38, fade(t, 1.6, 18.4, 1.2, 0.6))
     wrap_text(img, "Әскери кафедра сіздерді Республика күнімен шын жүректен құттықтайды! "
                    "Еліміздің тәуелсіздігі мен бейбітшілігін қорғау — біздің ортақ борышымыз.",
-              640, 38, 1550, fade(t, 3.5, 20.4, 1.2, 0.6), WHITE, serif=True, bold=True)
+              640, 38, 1550, fade(t, 3.5, 18.4, 1.2, 0.6), WHITE, serif=True, bold=True)
     wrap_text(img, "Военная кафедра сердечно поздравляет вас с Днём Республики! "
                    "Желаем мирного неба, крепкого здоровья, стойкости и успехов в служении Родине!",
-              820, 34, 1500, fade(t, 6.0, 20.4, 1.2, 0.6), (200, 230, 240))
+              820, 34, 1500, fade(t, 6.0, 18.4, 1.2, 0.6), (200, 230, 240))
     return img
 
 
-def scene_final(t):          # 142 – 152 (10 c)
+def scene_final(t):          # 152 – 162
     a = assets()
     img = base("bg_sky")
     flag = wave_flag(a["flag"], t + 30, 1300)
@@ -473,9 +517,9 @@ def scene_final(t):          # 142 – 152 (10 c)
     return img
 
 
-SCENES = [(0, 12, scene_intro), (12, 26, scene_flag), (26, 42, scene_declaration),
-          (42, 74, scene_timeline), (74, 100, scene_army), (100, 122, scene_values),
-          (122, 142, scene_congrats), (142, 152, scene_final)]
+SCENES = [(0, 12, scene_intro), (12, 26, scene_flag), (26, 54, scene_declaration),
+          (54, 80, scene_history), (80, 100, scene_timeline), (100, 120, scene_army),
+          (120, 134, scene_values), (134, 152, scene_congrats), (152, 162, scene_final)]
 XF = 0.6  # перекрёстное затухание между сценами, с
 
 
@@ -492,7 +536,7 @@ def render(i):
                 img = Image.blend(img, nxt, a)
             break
     if img is None:
-        img = scene_final(t - 142)
+        img = scene_final(t - SCENES[-1][0])
     return img.convert("RGB").tobytes()
 
 
@@ -576,8 +620,61 @@ def make_music(path, dur):
         w.writeframes(data.tobytes())
 
 
+# ---------------------------------------------------------------- voice-over
+# Текст озвучки — narration.txt (ключ|фраза), голос RHVoice «aleksandr-hq».
+VOICE_AT = {"intro": 3.0, "flag": 13.5, "decl": 27.5, "hist": 55.0, "time": 81.5,
+            "army": 101.0, "values": 121.0, "congr": 135.0, "final": 154.0}
+
+
+def load_wav_mono(path, sr=44100):
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", str(sr),
+                          "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.int16).astype(np.float32) / 32768
+
+
+def make_voice(sr=44100):
+    vdir = os.path.join(HERE, "voice")
+    os.makedirs(vdir, exist_ok=True)
+    out = np.zeros(int(DURATION * sr), np.float32)
+    with open(os.path.join(HERE, "narration.txt"), encoding="utf-8") as f:
+        for line in f:
+            key, phrase = line.rstrip("\n").split("|", 1)
+            wav = os.path.join(vdir, key + ".wav")
+            subprocess.run(["RHVoice-test", "-p", "aleksandr-hq", "-r", "95", "-o", wav],
+                           input=phrase.encode(), capture_output=True, check=True)
+            v = load_wav_mono(wav, sr)
+            v = v / (np.max(np.abs(v)) + 1e-9) * 0.9
+            s0 = int(VOICE_AT[key] * sr)
+            out[s0:s0 + len(v)] += v[:len(out) - s0]
+    return out
+
+
+def mix_audio(path):
+    sr = 44100
+    tmp = path + ".music.wav"
+    make_music(tmp, DURATION)
+    with wave.open(tmp) as w:
+        music = np.frombuffer(w.readframes(w.getnframes()), np.int16).reshape(-1, 2).astype(np.float32) / 32768
+    os.remove(tmp)
+    voice = make_voice(sr)
+    n = min(len(music), len(voice))
+    music, voice = music[:n], voice[:n]
+    # приглушаем музыку под голосом
+    env = np.abs(voice)
+    k = int(0.4 * sr)
+    env = np.convolve(env, np.ones(k) / k, mode="same")
+    duck = 1 - 0.7 * np.clip(env / 0.05, 0, 1)
+    mix = music * duck[:, None] * 0.8 + voice[:, None] * 0.95
+    mix /= max(1.0, np.max(np.abs(mix)) / 0.95)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes((mix * 32767).astype(np.int16).tobytes())
+
+
 def main():
-    make_music(AUDIO, DURATION)
+    mix_audio(AUDIO)
     total = int(DURATION * FPS)
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-i", AUDIO,
