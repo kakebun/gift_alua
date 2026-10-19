@@ -36,21 +36,43 @@ function heldHourglass(glow, t) {
 }
 
 // ---------------------------------------------------------------- A: STUCK IN 100 AD
+const PANIC = { ...EMO.fear, eyeS: 1.35, bL: [1, -1, -26], bR: [1, -1, -26], m: { w: 20, curve: -.6, open: .75, round: .9, wob: 1, tongue: 0 } };
+function cyanPortal(cx, cy, R) {
+  let s = '';
+  for (let i = 0; i < 4; i++) s += `<circle cx="${cx}" cy="${cy}" r="${f(R * (1 - i * .18))}" fill="#7fe3f0" opacity=".13"/>`;
+  const cols = ['#e9fbff', '#9eeaf5', '#35c9e0', '#1fa3c0'];
+  for (let i = 0; i < 12; i++) {
+    const rr = R * (.18 + i * .07), a0 = i * 53 + 20, len = 110 + (i % 3) * 40;
+    s += `<path d="M${f(cx + Math.cos(rad(a0)) * rr)} ${f(cy + Math.sin(rad(a0)) * rr)} A${f(rr)} ${f(rr)} 0 0 1 ${f(cx + Math.cos(rad(a0 + len)) * rr)} ${f(cy + Math.sin(rad(a0 + len)) * rr)}" fill="none" stroke="${cols[i % 4]}" stroke-width="${f(14 - i * .5)}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function crackedHourglass(sand = .6) { // sand running out of a crack
+  let h = hourglassSVG(sand, 0, 0);
+  h += `<path d="M-14 -40 L-4 -22 L-16 -6 L-6 8" fill="none" stroke="#1A1A1A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  h += `<path d="M-22 -18 Q-60 10 -64 60" fill="none" stroke="#e9c46a" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 12"/>`;
+  return h;
+}
 function thumbA() {
-  let s = `<rect width="1920" height="1080" fill="#ff9d4d"/>`;
-  s += `<circle cx="560" cy="700" r="360" fill="#ffd27a"/><circle cx="560" cy="700" r="300" fill="#ffe2a0"/>`;
-  s += colosseumSil(560, 1100, .78, '#d86a3c', '#9c4426');
-  s += cypress(140, 1090, 1.0, '#6f8a45') + cypress(980, 1090, .8, '#6f8a45');
-  s += `<rect y="1000" width="1920" height="90" fill="#c9773f"/><path d="M0 1000 L1920 1000" ${ink(7)}/>`;
-  // portal behind Max
-  s += portalSVG(1390, 520, 560, 1.7, 1);
-  // Max: big, scared, holding the glowing hourglass
-  const hg = heldHourglass(1, 1.1);
-  s += sticker(hero(Object.assign({ x: 1390, y: 1330, s: 1.48, yaw: 18, headYaw: -8, t: 0, idle: 0, face: EMO.fear, look: [-.5, -.1], sweat: 1.6, blink: 0, wave: 2, wind: [80, -40], tilt: -4 }, hg)));
-  for (let i = 0; i < 7; i++) { const a = i * 52 + 10; s += sparkle(1390 + Math.cos(rad(a)) * 190, 650 + Math.sin(rad(a)) * 150, .7 + (i % 3) * .2, a); }
-  // title
-  s += bigText('STUCK IN', 520, 150, 150, '#ffffff', { rot: -4 });
-  s += bigText('100 AD', 540, 345, 270, '#ffd23f', { rot: -4 });
+  let s = '';
+  const bands = [['#f9b24e', 0], ['#f7a440', 300], ['#f08f36', 560], ['#e8762c', 780]];
+  for (const [c, y] of bands) s += `<rect x="0" y="${y}" width="1920" height="${1080 - y}" fill="${c}"/>`;
+  s += `<circle cx="470" cy="760" r="270" fill="#ffd27a"/><circle cx="470" cy="760" r="220" fill="#ffe2a0"/>`;
+  // dark Colosseum silhouette with warm lit arches, kept left of Max
+  s += colosseumSil(370, 1100, .62, '#5a2618', '#ffcf7a', '#1A1A1A');
+  s += cypress(70, 1090, .95, '#3f5a2a');
+  s += `<rect y="1010" width="1920" height="80" fill="#4a1f14"/><path d="M0 1010 L1920 1010" ${ink(7)}/>`;
+  // cyan portal behind Max (complementary to the orange sky)
+  const MX = 1430, S = 1.9, GROUND = 1790;
+  s += cyanPortal(MX - 30, 470, 640);
+  // glow just around the hourglass
+  const HX = -150, HY = -650; // hero-local hand position (next to his face, towards the frame centre)
+  s += flatGlow(MX + HX * S, GROUND + (HY - 100) * S, 230, '#c9f6ff', .9);
+  s += sticker(hero({ x: MX, y: GROUND, s: S, yaw: 12, headYaw: -6, t: 0, idle: 0, ground: false, face: PANIC, look: [-.35, -.05], sweat: 1.6, blink: 0, wave: 2.4, wind: [90, -50], tilt: -6,
+    arms: { L: { to: [HX, HY] }, R: { to: [104, -690] } }, holdL: g('translate(0 -6) rotate(-12) scale(1.1)', crackedHourglass(.62)), legsVisible: false }));
+  for (let i = 0; i < 5; i++) { const a = 110 + i * 38; s += sparkle(MX + HX * S + Math.cos(rad(a)) * 210, GROUND + (HY - 100) * S + Math.sin(rad(a)) * 170, .9 + (i % 3) * .25, a); }
+  s += bigText('STUCK IN', 480, 150, 160, '#ffffff', { rot: -4 });
+  s += bigText('100 AD', 500, 355, 290, '#ffd23f', { rot: -4 });
   return TDEFS + s;
 }
 
@@ -69,23 +91,22 @@ function tornRing(cx, cy, R, n = 46) {
   return pts;
 }
 function thumbB() {
-  let s = `<rect width="1920" height="1080" fill="#FAF7F0"/><image href="../assets/paper.jpg" x="0" y="0" width="1920" height="1080" opacity=".9"/>`;
-  const cx = 640, cy = 560, R = 410;
-  s += flatGlow(cx, cy, R * 1.45, '#ffd66b', .9);
-  // spiral swirls around the hole
+  let s = `<rect width="1920" height="1080" fill="#2b3447"/>`;
+  for (let i = 0; i < 16; i++) s += `<path d="M${i * 130} 0 L${i * 130} 1080" stroke="#323c52" stroke-width="40"/>`;
+  s += `<rect width="1920" height="1080" fill="url(#vig)"/>`;
+  const cx = 600, cy = 590, R = 400;
+  s += flatGlow(cx, cy, R * 1.5, '#ffd66b', .8);
   for (let i = 0; i < 9; i++) { const rr = R + 40 + i * 18, a0 = i * 47; s += `<path d="M${f(cx + Math.cos(rad(a0)) * rr)} ${f(cy + Math.sin(rad(a0)) * rr)} A${rr} ${rr} 0 0 1 ${f(cx + Math.cos(rad(a0 + 70)) * rr)} ${f(cy + Math.sin(rad(a0 + 70)) * rr)}" fill="none" stroke="${['#ffe08a', '#f6c65a', '#e8a93c'][i % 3]}" stroke-width="${10 - i * .6}" stroke-linecap="round"/>`; }
   const hole = tornRing(cx, cy, R);
-  const id = 'holeclip';
-  s += `<clipPath id="${id}"><path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z"/></clipPath>`;
-  s += `<g clip-path="url(#${id})">${g(`translate(${cx - 640} ${cy - 560})`, romeInside())}</g>`;
-  // paper lip (curled edge) + ink outline
-  s += `<path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z" fill="none" stroke="#e9dfcc" stroke-width="26" stroke-linejoin="round"/>`;
-  s += `<path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z" fill="none" ${ink(7)}/>`;
+  s += `<clipPath id="holeclip"><path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z"/></clipPath>`;
+  s += `<g clip-path="url(#holeclip)">${g(`translate(${cx - 640} ${cy - 560})`, romeInside())}</g>`;
+  s += `<path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z" fill="none" stroke="#e9dfcc" stroke-width="26" stroke-linejoin="round"/><path d="M${hole.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z" fill="none" ${ink(7)}/>`;
   for (let i = 0; i < 8; i++) { const a = i * 45 + 20; s += sparkle(cx + Math.cos(rad(a)) * (R + 90), cy + Math.sin(rad(a)) * (R + 70), .8 + (i % 3) * .25, a); }
-  // Max leaning in from the right, pointing at Rome
-  s += sticker(hero({ x: 1500, y: 1340, s: 1.42, yaw: -35, headYaw: -10, t: 0, idle: 0, lean: -8, face: EMO.surprise, look: [-1, -.1], blink: 0, wave: 1.2, arms: { L: { a: [-100, -6] }, R: { to: [60, -560] } }, hands: { L: 'point' }, sweat: 1 }));
-  s += bigText('ROME?!', 1460, 140, 210, '#e53935', { rot: 4 });
-  return TDEFS + s;
+  const shocked = { ...EMO.surprise, eyeS: 1.35, bL: [1, -20, -6], bR: [1, -20, -6], m: { ...EMO.surprise.m, w: 18, open: .95 } };
+  s += sticker(hero({ x: 1480, y: 1520, s: 1.6, yaw: -35, headYaw: -10, t: 0, idle: 0, ground: false, lean: -6, face: shocked, look: [-1, -.1], blink: 0, wave: 1.2, legsVisible: false,
+    arms: { L: { to: [-260, -560] }, R: { to: [120, -470] } }, hands: { L: 'point' }, holdR: g('translate(0 -20) scale(.9)', hourglassSVG(.4, .9, 1)), sweat: 1 }));
+  s += bigText('NO WAY BACK?!', 600, 110, 150, '#ffd23f', { rot: -3 });
+  return `<defs><radialGradient id="vig" cx="50%" cy="50%" r="70%"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient></defs>` + TDEFS + s;
 }
 
 // ---------------------------------------------------------------- C: everyone stares at Max

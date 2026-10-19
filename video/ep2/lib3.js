@@ -156,7 +156,7 @@ function faceSVG(F, yaw, look, blink) {
     const open = clamp(F.e.open * (1 - blink));
     const hk = clamp(F.e.happy * 2 - .4), sk = 1 - clamp(F.e.happy * 2);
     if (sk > 0) {
-      if (open > .15) s += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(8.5 * sq)}" ry="${f(13 * open)}" fill="${PAL.ink}" opacity="${f(vis * sk)}"/>`;
+      if (open > .15) s += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(8.5 * sq * (F.eyeS || 1))}" ry="${f(13 * open * (F.eyeS || 1))}" fill="${PAL.ink}" opacity="${f(vis * sk)}"/>`;
       else s += `<path d="M${f(x - 10 * sq)} ${f(y + 2)} L${f(x + 10 * sq)} ${f(y + 2)}" ${ink(5)} opacity="${f(vis * sk)}"/>`;
     }
     if (hk > 0) s += `<path d="M${f(x - 11 * sq)} ${f(y + 4)} Q${f(x)} ${f(y - 12)} ${f(x + 11 * sq)} ${f(y + 4)}" fill="none" ${ink(5.5)} opacity="${f(vis * hk)}"/>`;
@@ -417,7 +417,7 @@ function capePanel(yaw, o) {
   // far half first (the half whose center line is nearer the viewer is drawn last)
   let s = '';
   const order = sn >= 0 ? [right, left] : [left, right];
-  for (const h of order) s += `<path d="M${h.map(q => f(q[0]) + ' ' + f(q[1])).join(' L')} Z" fill="${PAL.cape}"/>`;
+  for (const h of order) s += `<path d="M${h.map(q => f(q[0]) + ' ' + f(q[1])).join(' L')} Z" fill="${PAL.cape}" stroke="${PAL.cape}" stroke-width="3" stroke-linejoin="round"/>`;
   // outlines: outer edges + ragged bottom + top, and the back silhouette when turned
   const edge = side => { const e = []; for (let i = 0; i <= 6; i++) e.push(pt(side, i / 6)); return e; };
   const bottomAll = []; for (let i = 0; i <= N; i++) bottomAll.push(pt(ju(i), jv(i)));
