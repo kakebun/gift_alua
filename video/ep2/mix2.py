@@ -91,6 +91,9 @@ SFX = {
     'shout': lambda: norm(np.concatenate([brass(NOTE(43), .35), brass(NOTE(42), .45) * .8]), .8),
     'stamp': lambda: norm(ping(90, .3, 18) + hp(noise(.3), 1500) * np.exp(-t_(.3) * 40) * .6, .9),
     'rattle': lambda: norm(bp(noise(1.6), 2000, 8000) * (.5 + .5 * np.sign(np.sin(2 * np.pi * 11 * t_(1.6)))) * env(int(1.6 * SR), .05, .3), .45),
+    'thud': lambda: norm(lp(ping(70, .4, 12) + noise(.4) * np.exp(-t_(.4) * 18) * .6, 400), .9),
+    'creak': lambda: norm(bp(saw(110, .7, .08, 4) * (1 + .5 * np.sin(2 * np.pi * 30 * t_(.7))), 300, 2000) * env(int(.7 * SR), .05, .2), .5),
+    'squeak': lambda: norm(np.concatenate([sweep(900, 1500, .12) * np.hanning(int(.12 * SR)), sweep(1400, 900, .15) * np.hanning(int(.15 * SR))]), .5),
     'fanfare': None,
 }
 sfx = np.zeros(N)
