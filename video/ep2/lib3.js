@@ -222,22 +222,22 @@ function capStyle(hTbl, o = {}) { // region above a hairline e > h(phi)
   const loop = []; for (let i = 0; i < N; i++) { const ph = -Math.PI + 2 * Math.PI * i / N; loop.push([ph, hh(ph)]); }
   return Object.assign({ loop, inside: (ph, e) => e > h(ph) * D2R }, o);
 }
-function bandStyle(hTop, eLow, phMin, o = {}) { // horseshoe band: phMin <= |phi|, eLow < e < hTop(phi)
-  const h = smoothTbl(hTop), loop = [], N = 60;
+function bandStyle(hTop, eLowT, phMin, o = {}) { // horseshoe band: phMin <= |phi|, eLow(phi) < e < hTop(phi)
+  const h = smoothTbl(hTop), lo = typeof eLowT === 'number' ? () => eLowT : smoothTbl(eLowT), loop = [], N = 60;
   for (let i = 0; i <= N; i++) { const ph = phMin * D2R + (2 * Math.PI - 2 * phMin * D2R) * i / N; loop.push([ph, h(ph) * D2R]); }
-  for (let i = N; i >= 0; i--) { const ph = phMin * D2R + (2 * Math.PI - 2 * phMin * D2R) * i / N; loop.push([ph, eLow * D2R]); }
-  const inside = (ph, e) => { const d = Math.abs(((ph / D2R + 540) % 360) - 180); return d >= phMin && e < h(ph) * D2R && e > eLow * D2R; };
+  for (let i = N; i >= 0; i--) { const ph = phMin * D2R + (2 * Math.PI - 2 * phMin * D2R) * i / N; loop.push([ph, lo(ph) * D2R]); }
+  const inside = (ph, e) => { const d = Math.abs(((ph / D2R + 540) % 360) - 180); return d >= phMin && e < h(ph) * D2R && e > lo(ph) * D2R; };
   return Object.assign({ loop, inside }, o);
 }
 const HAIRSTYLES = {
   short: capStyle([[0, 34], [60, 22], [95, 4], [140, -14], [180, -22]], { vol: 6, teeth: { amp: 9, period: 16, range: 105, sharp: 1.6 }, bumps: bumpDirs([[-150, 30, 20, 26, 2], [-110, 45, 22, 26, 2], [-70, 58, 24, 26, 2], [-20, 72, 24, 26, 2], [30, 80, 26, 26, 2], [90, 70, 24, 26, 2], [150, 72, 24, 26, 2], [-150, 76, 22, 26, 2], [50, 55, 24, 26, 2], [100, 40, 24, 26, 2], [140, 30, 20, 26, 2], [175, 45, 22, 26, 2], [-100, 30, 18, 26, 2], [0, 50, 18, 24, 2]]), tex: [[0, 60, 30, 70], [40, 50, 70, 40]] }),
   curly: capStyle([[0, 30], [70, 16], [100, 0], [180, -18]], { vol: 12, teeth: { amp: 7, period: 22, range: 120, sharp: .5 }, bumps: bumpDirs(Array.from({ length: 22 }, (_, i) => [-180 + i * 16.4, 25 + (i % 3) * 18, 16, 24, .5])) }),
-  bald: bandStyle([[0, -60], [58, -60], [62, -36], [74, 2], [110, 16], [180, 26]], -38, 62, { vol: 10, bumps: bumpDirs([[80, 0, 10, 26, .6], [110, 6, 12, 26, .6], [140, 4, 10, 26, .6], [180, 0, 12, 26, .6], [-140, 4, 10, 26, .6], [-110, 6, 12, 26, .6], [-80, 0, 10, 26, .6]]) }),
+  bald: bandStyle([[0, -6], [62, -6], [72, 2], [84, 8], [110, 16], [180, 26]], [[0, -10], [62, -10], [84, -14], [130, -28], [180, -36]], 62, { vol: 10, bumps: bumpDirs([[80, 0, 10, 26, .6], [110, 6, 12, 26, .6], [140, 4, 10, 26, .6], [180, 0, 12, 26, .6], [-140, 4, 10, 26, .6], [-110, 6, 12, 26, .6], [-80, 0, 10, 26, .6]]) }),
   bun: capStyle([[0, 44], [60, 32], [100, 12], [180, -24]], { vol: 4, part: true, tex: [[20, 60, 40, 40], [-20, 60, -40, 40]] }),
   long: capStyle([[0, 44], [60, 30], [100, 6], [180, -30]], { vol: 6, part: true, tex: [[20, 60, 40, 40], [-20, 60, -40, 40]] }),
 };
 const BEARD = (() => { // region below the beard line on the front half; bottom edge juts below the chin
-  const h = smoothTbl([[0, -38], [40, -33], [80, -22], [96, -16]]), loop = [], N = 50, PH = 96;
+  const h = smoothTbl([[0, -36], [45, -30], [85, -8], [105, 2], [118, 8]]), loop = [], N = 60, PH = 118;
   for (let i = 0; i <= N; i++) { const ph = (-PH + 2 * PH * i / N) * D2R; loop.push([ph, h(ph) * D2R]); }
   for (let i = N; i >= 0; i--) { const ph = (-PH + 2 * PH * i / N) * D2R, d = Math.abs(ph / D2R); loop.push([ph, lerp(-74, h(ph) - .5, Math.pow(d / PH, 3)) * D2R, lerp(1.07 + .03 * Math.sin(i * 1.7), 1, Math.pow(d / PH, 3))]); }
   return { loop, inside: (ph, e) => Math.abs(ph / D2R) < PH && e < h(ph) * D2R, vol: 8, bumps: bumpDirs([[-60, -40, 8, 28, .6], [-20, -60, 10, 28, .6], [20, -60, 10, 28, .6], [60, -40, 8, 28, .6], [0, -75, 10, 30, .6], [90, -20, 8, 28, .6], [-90, -20, 8, 28, .6]]) };

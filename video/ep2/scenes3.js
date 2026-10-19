@@ -211,7 +211,14 @@ SC.attic = {
       const hyB = tt => tt < tFind ? 0 : K(tt, [[tFind + .5, 0], [tFind + 1, -25, eback]]);
       o.headYaw = hyB(t); Object.assign(o, turnFX(t, hyB, 1));
       world += shadow(900, GY + 4, 110) + hero(o);
-      for (const [t0, svg] of tosses) { const k = seg(t, t0, t0 + 1.1); if (k > 0 && k < 1) world += g(T(lerp(1000, 300, k), lerp(640, 900, k) - Math.sin(k * Math.PI) * 420, 1, k * 720), svg); }
+      const tossPos = k => [lerp(1000, 300, k), lerp(640, 900, k) - Math.sin(k * Math.PI) * 420];
+      for (const [t0, svg] of tosses) {
+        const k = seg(t, t0, t0 + 1.1); if (k <= 0 || k >= 1) continue;
+        for (let j = 3; j >= 1; j--) { const kk = Math.max(0, k - j * .035), p = tossPos(kk); world += op(.18 * (4 - j) / 3, g(T(p[0], p[1], 1, kk * 720), svg)); } // motion trail
+        const p = tossPos(k), q = tossPos(Math.max(0, k - .06)), ang = Math.atan2(p[1] - q[1], p[0] - q[0]);
+        for (let j = -1; j <= 1; j++) world += `<path d="M${f(p[0] - Math.cos(ang) * 50 + Math.sin(ang) * j * 18)} ${f(p[1] - Math.sin(ang) * 50 - Math.cos(ang) * j * 18)} l${f(-Math.cos(ang) * 60)} ${f(-Math.sin(ang) * 60)}" ${ink(3.5)} opacity=".55"/>`;
+        world += g(T(p[0], p[1], 1, k * 720), svg);
+      }
       world += sparkle(CHX + Math.sin(t * 3) * 14, GY - 360, (.8 + Math.sin(t * 9) * .25) * fadeI(t, tFind - .3, .3), t * 70);
       const z = K(t, [[tB, 1.4], [tC, 1.55]], esine);
       return cam(world, K(t, [[tB, 1000], [tC, 980]]), K(t, [[tB, 560], [tC, 520]]), z) + this.overlay(t, S);
@@ -234,8 +241,10 @@ SC.attic = {
     const portalK = eout(seg(t, tE, tE + .6));
     if (portalK > 0) world += portalSVG(860, 560, 560 * portalK, t, portalK);
     const suck = ein(seg(t, tSuck, tSuck + 1.0)), stretch = Math.sin(seg(t, tSuck - .3, tSuck + .4) * Math.PI) * .2;
+    if (t > tE + .3) for (let i = 0; i < 14; i++) { const ph = (t * 1.6 + rnd(i)) % 1, a = rnd(i + 7) * 360, r0 = lerp(900, 120, ein(ph)); world += `<path d="M${f(860 + Math.cos(rad(a)) * r0)} ${f(560 + Math.sin(rad(a)) * r0)} L${f(860 + Math.cos(rad(a)) * (r0 + 90))} ${f(560 + Math.sin(rad(a)) * (r0 + 90))}" stroke="#fff3c4" stroke-width="6" stroke-linecap="round" opacity="${f(Math.sin(ph * Math.PI) * .8 * seg(t, tE + .3, tE + .8))}"/>`; }
     if (suck > 0 || stretch > 0) heroS = g(`translate(${f(lerp(930, 860, suck))} ${f(lerp(700, 560, suck))}) rotate(${f(suck * 540 - stretch * 30)}) scale(${f((1 - suck * .97) * (1 + stretch))} ${f((1 - suck * .97) * (1 - stretch * .5))}) translate(-930 -700)`, heroS);
     world += shadow(930, GY + 4, 110 * (1 - suck)) + heroS;
+    { const fk2 = seg(t, tFlip, tFlip + .45); if (fk2 > 0 && fk2 < 1) { const r = 120, a0 = -90 + fk2 * 180; world += `<path d="M${f(930 + Math.cos(rad(a0 - 70)) * r)} ${f(GY + hy + Math.sin(rad(a0 - 70)) * r)} A${r} ${r} 0 0 1 ${f(930 + Math.cos(rad(a0)) * r)} ${f(GY + hy + Math.sin(rad(a0)) * r)}" fill="none" ${ink(5)} opacity="${f(.6 * Math.sin(fk2 * Math.PI))}"/><path d="M${f(930 - Math.cos(rad(a0 - 70)) * r)} ${f(GY + hy - Math.sin(rad(a0 - 70)) * r)} A${r} ${r} 0 0 1 ${f(930 - Math.cos(rad(a0)) * r)} ${f(GY + hy - Math.sin(rad(a0)) * r)}" fill="none" ${ink(5)} opacity="${f(.6 * Math.sin(fk2 * Math.PI))}"/>`; } }
     if (t > tFlip && t < tFlip + .8) for (let i = 0; i < 8; i++) { const k = seg(t, tFlip, tFlip + .8), a = i * 45; world += sparkle(930 + Math.cos(rad(a)) * (60 + k * 260), GY + hy + Math.sin(rad(a)) * (60 + k * 200), .7 * (1 - k), k * 200); }
     let z, cx, cy;
     if (shot === 'C') { z = K(t, [[tC, 2.0], [tD, 2.2]], esine); cx = 930; cy = K(t, [[tC, 440], [tC + 1.4, 400]]); }
@@ -280,11 +289,22 @@ SC.arrival = {
       let w = romeStreet(t, { px: 300 });
       const GY = 990;
       const crowd = [['woman', 400, 'surprise', -1], ['oldman', 640, 'sad', -1], ['boy', 1560, 'joy', 1], ['lady', 1760, 'surprise', 1]];
-      for (const [k, x, fc, sd] of crowd) w += shadow(x, GY + 2, 90) + npc(k, { x, y: GY, s: .82, t, phase: x, yaw: sd * 30, face: EMO[fc], look: [-sd * .9, .4], blink: blinkK(t, x), tilt: Math.sin(t + x) * 3 });
+      const tt0 = t - tWide;
+      const act = {
+        // woman gasps: hand to mouth, then lowers it
+        woman: () => { const k = Math.sin(seg(tt0, .3, 3.6) * Math.PI); return { arms: { R: k > .05 ? { to: [lerp(20, 10, k), lerp(-380, -660, eout(Math.min(1, k * 1.6)))], fore: .8 } : undefined }, face: k > .3 ? EMO.surprise : EMO.neutral, headYaw: -10 }; },
+        // old man strokes his beard and slowly nods
+        oldman: () => { const k = clamp(seg(tt0, .6, 1.2)) * (1 - seg(tt0, 5.5, 6.2)); return { arms: { L: k > .02 ? { to: [lerp(-60, -10, k), lerp(-380, -630 + Math.sin(t * 6) * 8 * k, k)], fore: .8 } : undefined }, tilt: Math.sin(t * 2.2) * 5 * k, face: EMO.sad }; },
+        // boy points at Max and bounces with laughter
+        boy: () => { const k = eback(seg(tt0, 1.0, 1.4)); return { arms: { L: { a: [lerp(-12, -85, k), 0] } }, hands: { L: k > .5 ? 'point' : 'fist' }, face: k > .5 ? EMO.joy : EMO.smile, headY: -Math.abs(Math.sin(t * 9)) * 8 * k, squash: 1 - Math.abs(Math.sin(t * 9)) * .02 * k }; },
+        // lady: hands on hips, disapproving
+        lady: () => { const k = eio(seg(tt0, 1.6, 2.2)); return { arms: k > .02 ? { L: { to: [lerp(-120, -100, k), lerp(-380, -450, k)], bend: 'up' }, R: { to: [lerp(120, 100, k), lerp(-380, -450, k)], bend: 'up' } } : undefined, face: k > .5 ? EMO.anger : EMO.surprise, tilt: -4 * k }; },
+      };
+      for (const [k, x, fc, sd] of crowd) w += shadow(x, GY + 2, 90) + npc(k, Object.assign({ x, y: GY, s: .82, t, phase: x, yaw: sd * 30, face: EMO[fc], look: [-sd * .9, .4], blink: blinkK(t, x), tilt: Math.sin(t + x) * 3 }, act[k] ? act[k]() : {}));
       // merchant walks in (profile), stops, points and yells
-      const tm = L[2] - .3, tStop = tm + 1.0;
-      const mx = K(t, [[tm, 1460], [tStop, 1270, eout]]);
-      const walking = t > tm && t < tStop, wc = walkCycle(walkPh(mx, 1460, .86), walking ? 1 - seg(t, tStop - .3, tStop) : 0);
+      const tm = L[2] - 1.1, tStop = tm + 1.8;
+      const mx = K(t, [[tm, 2150], [tStop, 1340, k => 1 - Math.pow(1 - k, 2)]]);
+      const walking = t > tm && t < tStop, wc = walkCycle(walkPh(mx, 2150, .86), walking ? 1 - seg(t, tStop - .3, tStop) : 0);
       const yelling = t > tStop && t < lf(S, 2, .78);
       const pointK = eback(seg(t, tStop, tStop + .35));
       w += shadow(mx, GY + 2, 95) + npc('merchant', { x: mx, y: GY + wc.bob * .85, s: .86, t, yaw: K(t, [[tStop, -90], [tStop + .4, -45]]), legs: walking ? wc.legs : undefined, lean: yelling ? -6 + Math.sin(t * 10) * 2 : wc.lean, face: yelling ? mix(EMO.yell, EMO.anger, clamp(.5 - .5 * Math.sin(t * 17) * Math.sin(t * 5.3 + 1))) : EMO.anger, look: [-.9, .3], blink: blinkK(t, 3), headY: yelling ? Math.sin(t * 17) * 4 : 0, arms: t > tStop ? { L: { a: [lerp(-12, -88, pointK) + Math.sin(t * 12) * 4 * yelling, 0] }, R: { a: [30, -60] } } : wc.arms, hands: { L: t > tStop ? 'point' : 'fist' } });
@@ -295,7 +315,7 @@ SC.arrival = {
       const thinking = t > lf(S, 2, .82);
       const ho = {
         x: 960, s: .9, t, ground: false, yaw: lerp(60, 20, sit), legs: { L: [86, -4], R: [80, 2] }, lean: lerp(-84, -8, sit) - recoil * 14,
-        arms: thinking ? { L: { a: [-30, 20] }, R: { to: [26, -628] } } : { L: { a: [lerp(-40, -34, sit), lerp(10, 26, sit)] }, R: { a: [lerp(150, 36, sit) + recoil * 60, lerp(0, 20, sit)] } },
+        arms: thinking ? { L: { a: [-30, 20] }, R: { to: [26, -628] } } : { L: { a: [lerp(-14, -34, sit), lerp(6, 26, sit)] }, R: { a: [lerp(16, 36, sit) + recoil * 60, lerp(-6, 20, sit)] } },
         hands: thinking ? { R: 'thumb' } : {},
         face: E(t, [[tWide, 'dazed'], [tWide + 2.0, 'surprise'], [tWide + 2.6, 'neutral'], [tStop, 'fear'], [lf(S, 2, .82), 'think']]),
         headYaw: hyA(t),
@@ -304,7 +324,7 @@ SC.arrival = {
       ho.y = GY - 4 + (345 - 40) * .9;
       w += shadow(1040, GY + 2, 170) + hero(ho);
       if (sit < .3) for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.1; w += sparkle(930 + Math.cos(a) * 90, 820 + Math.sin(a) * 26, .4, a * 40, .9); }
-      if (yelling) { const k = pop(t, tStop, .4), [hx, hy] = shake(t, 4); w += g(T(1470 + hx, 330 + hy, k), `<path d="${smooth([[-230, -90], [230, -95], [250, 60], [40, 70], [10, 140], [-20, 70], [-240, 64]], true, .25)}" fill="#fff" ${ink(5)}/>` + text('QUID FACIS?!', 0, -10, { size: 86, fill: '#a8322d' })); }
+      if (yelling) { const k = pop(t, tStop, .4), [hx, hy] = shake(t, 4); w += g(T(1010 + hx, 370 + hy, k * .85), `<path d="M-240 -88 Q0 -104 236 -90 Q254 -10 236 50 L292 112 L190 64 Q0 76 -238 62 Q-256 -10 -240 -88 Z" fill="#fff" ${ink(5)}/>` + text('QUID FACIS?!', 0, -12, { size: 86, fill: '#a8322d' })); }
       const z = K(t, [[tWide, 1.35], [tWide + 3, 1.15], [D, 1.1]], esine);
       let wide = cam(w, 1030, K(t, [[tWide, 690], [tWide + 3, 650]]), z) + label('LATIN', 960, 130, t, lf(S, 2, .84), { size: 120 }) + label('(the language of Rome)', 960, 225, t, lf(S, 2, .9), { size: 52, fill: '#5d4a3a', sw: 8 });
       out = wide + (t < tWide + .4 ? lids(esine(seg(t, tWide + .05, tWide + .4))) : '');
@@ -312,7 +332,7 @@ SC.arrival = {
     if (t < .5) out += `<rect width="1920" height="1080" fill="#fffaf0" opacity="${f(1 - esine(t / .5))}"/>`;
     return out;
   },
-  cues(S) { const L = S.L.map(l => l[0]); const tWide = lf(S, 1, .58), tm = L[2] - .3; return [[0, 'heartbeat', .6], [1.2, 'city', .5], [3.4, 'blink', .3], [L[1] + .1, 'murmur', .5], [tWide, 'whoosh', .25], [tm, 'steps', .4], [tm + 1.0, 'shout', .7], [lf(S, 2, .84), 'pop', .4]]; },
+  cues(S) { const L = S.L.map(l => l[0]); const tWide = lf(S, 1, .58), tm = L[2] - 1.1; return [[0, 'heartbeat', .6], [1.2, 'city', .5], [3.4, 'blink', .3], [L[1] + .1, 'murmur', .5], [tWide, 'whoosh', .25], [tm, 'steps', .4], [tm + 1.8, 'shout', .7], [lf(S, 2, .84), 'pop', .4]]; },
 };
 
 // ---------------------------------------------------------------- SCENE: TITLE
@@ -349,7 +369,7 @@ SC.title = {
     ho.look = K(t, [[1.6, [0, -.3]], [lf(S, 0, .45), [0, -.2]], [lf(S, 0, .7), [0, 0]], [tLost + .3, [.4, .3]]]);
     const shk = t > tShake && t < lf(S, 1, .8) ? Math.sin(t * 26) * 16 : 0;
     if (t < tLost) ho.arms = { L: { a: [K(t, [[lf(S, 0, .4), -12], [lf(S, 0, .5), -150]]), K(t, [[lf(S, 0, .4), 4], [lf(S, 0, .5), -10]])] }, R: { a: [K(t, [[lf(S, 0, .4), 12], [lf(S, 0, .5), 150]]), K(t, [[lf(S, 0, .4), -4], [lf(S, 0, .5), 10]])] } };
-    else { const hp = K(t, [[tLost, [80, -420]], [tLost + .5, [60, -470]]]); ho.arms = { L: { a: [-12, 4] }, R: { to: [hp[0] + shk * .4, hp[1] + shk] } }; ho.frontExtra = g(`translate(${f(hp[0] + 34 + shk * .4)} ${f(hp[1] - 30 + shk)}) rotate(${f(shk * .8)}) scale(.62)`, hourglassSVG(1, 0, t)); }
+    else { const hp = K(t, [[tLost, [80, -420]], [tLost + .5, [60, -470]]]); ho.arms = { L: { a: [-12, 4] }, R: { to: [hp[0] + shk * .4, hp[1] + shk] } }; ho.frontExtra = g(`translate(${f(hp[0] + shk * .4)} ${f(hp[1] + shk)}) rotate(${f(shk * .8 - 8)}) scale(.62)`, hourglassSVG(1, 0, t)) + handSVG([hp[0] + shk * .4, hp[1] + shk]); }
     if (t > lf(S, 1, .75)) ho.lean = Math.sin(seg(t, lf(S, 1, .75), lf(S, 1, 1)) * Math.PI) * 6;
     w += shadow(960, GY + 8, 130) + hero(ho);
     const z = K(t, [[0, 1.8], [1.6, 1.6], [lf(S, 0, .45), 1.0], [tLost, 1.0], [tLost + 1.0, 1.35]], eio);
