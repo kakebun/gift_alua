@@ -185,36 +185,159 @@ function faceSVG(F, yaw, look, blink) {
 // head: circle + face + hair. o.hair: 'hero' | npc style
 function headSVG(o) {
   const yaw = o.headYaw || 0, F = o.face || EMO.neutral, look = o.look || [0, 0];
+  const hs = o.hairStyle && o.hairStyle !== 'hero' ? o.hairStyle : null, col = o.hairCol || '#2b2523';
   let s = '';
-  const npcBack = o.hairStyle && o.hairStyle !== 'hero' ? npcHairBack(o.hairStyle, yaw, o.hairCol) : '';
-  s += npcBack;
+  if (hs) s += npcHairBehind(hs, yaw, col);           // long hair panel / bun when behind the head
   s += `<circle cx="0" cy="0" r="100" fill="${PAL.head}" ${ink()}/>`;
+  if (o.beard) s += sphRegionSVG(BEARD, yaw, col);
   s += faceSVG(F, yaw, look, o.blink || 0);
-  if (o.beard) s += npcBeard(yaw, o.hairCol || '#2b2523');
-  if (o.mustache) { const [x, y, d] = proj(0, 34, yaw); if (d > .2) s += `<path d="M${f(x - 26)} ${f(y + 4)} Q${f(x - 12)} ${f(y - 8)} ${f(x)} ${f(y)} Q${f(x + 12)} ${f(y - 8)} ${f(x + 26)} ${f(y + 4)} Q${f(x)} ${f(y + 6)} ${f(x - 26)} ${f(y + 4)} Z" fill="${o.hairCol || '#2b2523'}" ${ink(3)}/>`; }
+  if (o.mustache) { const [x, y, d] = proj(0, 34, yaw); if (d > .25) { const w = 26 * clamp(d * 1.2, .35, 1); s += `<path d="M${f(x - w)} ${f(y + 4)} Q${f(x - w * .45)} ${f(y - 8)} ${f(x)} ${f(y)} Q${f(x + w * .45)} ${f(y - 8)} ${f(x + w)} ${f(y + 4)} Q${f(x)} ${f(y + 6)} ${f(x - w)} ${f(y + 4)} Z" fill="${col}" ${ink(3)}/>`; } }
   if (o.helmet) s += helmetSVG(yaw, o.crest);
-  else if (!o.hairStyle || o.hairStyle === 'hero') s += hairSVG(yaw);
-  else s += npcHairFront(o.hairStyle, yaw, o.hairCol);
+  else if (!hs) s += o.hairRot ? g(`rotate(${f(o.hairRot)} 0 -40)`, hairSVG(yaw)) : hairSVG(yaw);
+  else s += (hs === 'long' ? npcHairFront(hs, yaw, col) : '') + sphRegionSVG(HAIRSTYLES[hs], yaw, col) + (hs !== 'long' ? npcHairFront(hs, yaw, col) : '');
   return s;
 }
-// NPC hair: simple shapes, shifted toward the back of the head as it turns
-function npcHairFront(style, yaw, col = '#2b2523') {
-  const a = rad(yaw), sh = -Math.sin(a) * 26, sx = 1 - Math.abs(Math.sin(a)) * .15, back = Math.cos(a) < 0;
-  const tr = `translate(${f(sh)} 0) scale(${f(sx)} 1)`;
-  if (style === 'short') return g(tr, `<path d="${locks([[-98, -6, 't'], [-96, -40, 'v'], [-110, -70, 't'], [-80, -86, 'v'], [-74, -116, 't'], [-40, -106, 'v'], [-14, -124, 't'], [10, -104, 'v'], [44, -118, 't'], [56, -94, 'v'], [92, -96, 't'], [90, -68, 'v'], [106, -40, 't'], [96, -12, 'v'], [80, -40, 'v'], [50, -48, 't'], [30, -64, 'v'], [4, -50, 't'], [-20, -66, 'v'], [-46, -48, 't'], [-66, -62, 'v'], [-84, -36, 't']].map(p => back ? [p[0], p[1] < -50 ? p[1] : p[1] + 70, p[2]] : p), .1)}" fill="${col}" ${ink()}/>`);
-  if (style === 'curly') { let c = ''; for (let i = 0; i < 11; i++) { const an = rad(200 + i * 14); c += `<circle cx="${f(Math.cos(an) * 90)}" cy="${f(Math.sin(an) * 90 - 8)}" r="26" fill="${col}" ${ink()}/>`; } return g(tr, c + `<path d="M-96 -20 Q-90 -100 0 -110 Q90 -100 96 -20 Q50 -60 0 -62 Q-50 -60 -96 -20 Z" fill="${col}"/>`); }
-  if (style === 'bald') return g(tr, `<path d="M-100 -4 Q-108 -38 -90 -52 Q-82 -28 -86 4 Z M100 -4 Q108 -38 90 -52 Q82 -28 86 4 Z" fill="${col}" ${ink(4.5)}/>`);
-  if (style === 'bun' || style === 'long') return g(tr, `<path d="M-100 -4 Q-112 -112 0 -108 Q112 -112 100 -4 Q86 -44 56 -62 Q20 -50 0 -72 Q-20 -50 -56 -62 Q-86 -44 -100 -4 Z" fill="${col}" ${ink()}/>` + (style === 'bun' ? `<circle cx="0" cy="-118" r="38" fill="${col}" ${ink()}/>` : ''));
-  return '';
+
+// ---------------------------------------------------------------- spherical hair regions (NPCs)
+// A hairstyle is a region on the head sphere: a closed loop of (azimuth, elevation) points plus an
+// inside() test. The visible part is rebuilt each frame for the current yaw, so hair stays glued to
+// the head at every angle. Where the region crosses the silhouette, the outline is pushed outward
+// (volume) with bumps/spikes defined by 3D directions, so they rotate with the head as well.
+const D2R = Math.PI / 180;
+const sphv = (ph, e) => [Math.cos(e) * Math.sin(ph), -Math.sin(e), Math.cos(e) * Math.cos(ph)];
+const viewv = (v, a) => [v[0] * Math.cos(a) + v[2] * Math.sin(a), v[1], -v[0] * Math.sin(a) + v[2] * Math.cos(a)];
+const unviewv = (v, a) => [v[0] * Math.cos(a) - v[2] * Math.sin(a), v[1], v[0] * Math.sin(a) + v[2] * Math.cos(a)];
+const angOfV = v => [Math.atan2(v[0], v[2]), Math.asin(clamp(-v[1], -1, 1))];
+const smoothTbl = (tbl) => ph => { // tbl: [[deg, value]...] over |phi| in 0..180, cosine-smoothed
+  const d = Math.abs(((ph / D2R + 540) % 360) - 180);
+  for (let i = 0; i < tbl.length - 1; i++) if (d <= tbl[i + 1][0]) { const k = (d - tbl[i][0]) / (tbl[i + 1][0] - tbl[i][0]); return lerp(tbl[i][1], tbl[i + 1][1], esine(k)); }
+  return tbl[tbl.length - 1][1];
+};
+function bumpDirs(list) { return list.map(([az, el, amp, w, p]) => ({ d: sphv(az * D2R, el * D2R), amp, w: w * D2R, p: p || 1.6 })); }
+function bumpAt(v, dirs) { let m = 0; for (const b of dirs) { const c = clamp(v[0] * b.d[0] + v[1] * b.d[1] + v[2] * b.d[2], -1, 1), an = Math.acos(c); if (an < b.w) m = Math.max(m, b.amp * Math.pow(1 - an / b.w, b.p)); } return m; }
+function capStyle(hTbl, o = {}) { // region above a hairline e > h(phi)
+  const h = smoothTbl(hTbl), N = 120;
+  const teeth = o.teeth || null;
+  const hh = ph => { let e = h(ph); if (teeth) { const d = Math.abs(((ph / D2R + 540) % 360) - 180); if (d < teeth.range) { const tri = 1 - Math.abs(((ph / D2R) / teeth.period % 1 + 1) % 1 * 2 - 1); e -= teeth.amp * Math.pow(tri, teeth.sharp || 2) * (1 - d / teeth.range * .4); } } return e * D2R; };
+  const loop = []; for (let i = 0; i < N; i++) { const ph = -Math.PI + 2 * Math.PI * i / N; loop.push([ph, hh(ph)]); }
+  return Object.assign({ loop, inside: (ph, e) => e > h(ph) * D2R }, o);
 }
-function npcHairBack(style, yaw, col = '#2b2523') {
-  if (style !== 'long') return '';
-  const sh = -Math.sin(rad(yaw)) * 26;
-  return g(`translate(${f(sh)} 0)`, `<path d="M-96 -40 Q-130 60 -108 180 Q-80 190 -64 160 Q-78 60 -70 -10 Z M96 -40 Q130 60 108 180 Q80 190 64 160 Q78 60 70 -10 Z" fill="${col}" ${ink()}/>`);
+function bandStyle(hTop, eLow, phMin, o = {}) { // horseshoe band: phMin <= |phi|, eLow < e < hTop(phi)
+  const h = smoothTbl(hTop), loop = [], N = 60;
+  for (let i = 0; i <= N; i++) { const ph = phMin * D2R + (2 * Math.PI - 2 * phMin * D2R) * i / N; loop.push([ph, h(ph) * D2R]); }
+  for (let i = N; i >= 0; i--) { const ph = phMin * D2R + (2 * Math.PI - 2 * phMin * D2R) * i / N; loop.push([ph, eLow * D2R]); }
+  const inside = (ph, e) => { const d = Math.abs(((ph / D2R + 540) % 360) - 180); return d >= phMin && e < h(ph) * D2R && e > eLow * D2R; };
+  return Object.assign({ loop, inside }, o);
 }
-function npcBeard(yaw, col) {
-  const sh = Math.sin(rad(yaw)) * 30;
-  return g(`translate(${f(sh)} 0)`, `<path d="M-84 34 Q-76 112 0 118 Q76 112 84 34 Q60 64 30 70 Q0 60 -30 70 Q-60 64 -84 34 Z" fill="${col}" ${ink(5)}/>`);
+const HAIRSTYLES = {
+  short: capStyle([[0, 34], [60, 22], [95, 4], [140, -14], [180, -22]], { vol: 6, teeth: { amp: 9, period: 16, range: 105, sharp: 1.6 }, bumps: bumpDirs([[-150, 30, 20, 26, 2], [-110, 45, 22, 26, 2], [-70, 58, 24, 26, 2], [-20, 72, 24, 26, 2], [30, 80, 26, 26, 2], [90, 70, 24, 26, 2], [150, 72, 24, 26, 2], [-150, 76, 22, 26, 2], [50, 55, 24, 26, 2], [100, 40, 24, 26, 2], [140, 30, 20, 26, 2], [175, 45, 22, 26, 2], [-100, 30, 18, 26, 2], [0, 50, 18, 24, 2]]), tex: [[0, 60, 30, 70], [40, 50, 70, 40]] }),
+  curly: capStyle([[0, 30], [70, 16], [100, 0], [180, -18]], { vol: 12, teeth: { amp: 7, period: 22, range: 120, sharp: .5 }, bumps: bumpDirs(Array.from({ length: 22 }, (_, i) => [-180 + i * 16.4, 25 + (i % 3) * 18, 16, 24, .5])) }),
+  bald: bandStyle([[0, -60], [58, -60], [62, -36], [74, 2], [110, 16], [180, 26]], -38, 62, { vol: 10, bumps: bumpDirs([[80, 0, 10, 26, .6], [110, 6, 12, 26, .6], [140, 4, 10, 26, .6], [180, 0, 12, 26, .6], [-140, 4, 10, 26, .6], [-110, 6, 12, 26, .6], [-80, 0, 10, 26, .6]]) }),
+  bun: capStyle([[0, 44], [60, 32], [100, 12], [180, -24]], { vol: 4, part: true, tex: [[20, 60, 40, 40], [-20, 60, -40, 40]] }),
+  long: capStyle([[0, 44], [60, 30], [100, 6], [180, -30]], { vol: 6, part: true, tex: [[20, 60, 40, 40], [-20, 60, -40, 40]] }),
+};
+const BEARD = (() => { // region below the beard line on the front half; bottom edge juts below the chin
+  const h = smoothTbl([[0, -38], [40, -33], [80, -22], [96, -16]]), loop = [], N = 50, PH = 96;
+  for (let i = 0; i <= N; i++) { const ph = (-PH + 2 * PH * i / N) * D2R; loop.push([ph, h(ph) * D2R]); }
+  for (let i = N; i >= 0; i--) { const ph = (-PH + 2 * PH * i / N) * D2R, d = Math.abs(ph / D2R); loop.push([ph, lerp(-74, h(ph) - .5, Math.pow(d / PH, 3)) * D2R, lerp(1.07 + .03 * Math.sin(i * 1.7), 1, Math.pow(d / PH, 3))]); }
+  return { loop, inside: (ph, e) => Math.abs(ph / D2R) < PH && e < h(ph) * D2R, vol: 8, bumps: bumpDirs([[-60, -40, 8, 28, .6], [-20, -60, 10, 28, .6], [20, -60, 10, 28, .6], [60, -40, 8, 28, .6], [0, -75, 10, 30, .6], [90, -20, 8, 28, .6], [-90, -20, 8, 28, .6]]) };
+})();
+function sphRegionPoly(st, yaw) {
+  // Clip the region (closed loop on the sphere) to the visible hemisphere. Each exit point is joined
+  // to the next entry point *in loop order* by the silhouette arc that lies inside the region.
+  const a = rad(yaw), R = 100;
+  const P = st.loop.map(([ph, e, r]) => { const v = viewv(sphv(ph, e), a); return { x: v[0] * R * (r || 1), y: v[1] * R * (r || 1), z: v[2], ux: v[0], uy: v[1] }; });
+  const n = P.length, ev = [];
+  for (let i = 0; i < n; i++) {
+    const p = P[i], q = P[(i + 1) % n];
+    if ((p.z > 0) !== (q.z > 0)) { const t = p.z / (p.z - q.z); ev.push({ i, enter: q.z > 0, ang: Math.atan2(lerp(p.uy, q.uy, t), lerp(p.ux, q.ux, t)), r: lerp(st.loop[i][2] || 1, st.loop[(i + 1) % n][2] || 1, t) }); }
+  }
+  const rimIn = ang => { const v = unviewv([Math.cos(ang), Math.sin(ang), 0], a); const [ph, e] = angOfV(v); return st.inside(ph, e); };
+  const rimPt = (ang, k) => { const v = unviewv([Math.cos(ang), Math.sin(ang), 0], a); const r = R + ((st.vol || 0) + (st.bumps ? bumpAt(v, st.bumps) : 0)) * k; return [Math.cos(ang) * r, Math.sin(ang) * r]; };
+  const arcPts = (a0, a1) => {
+    let fw = a1 - a0; while (fw < 0) fw += 2 * Math.PI; while (fw >= 2 * Math.PI) fw -= 2 * Math.PI;
+    const bw = 2 * Math.PI - fw;
+    const midF = a0 + fw / 2, midB = a0 - bw / 2, inF = rimIn(midF), inB = rimIn(midB);
+    const dir = inF && !inB ? 1 : !inF && inB ? -1 : (fw <= bw ? 1 : -1), span = dir > 0 ? fw : bw;
+    const steps = Math.max(2, Math.ceil(span / (2.5 * D2R))), out = [], ramp = 14 * D2R;
+    for (let k = 0; k <= steps; k++) { const u = k / steps * span; out.push(rimPt(a0 + dir * u, esine(clamp(Math.min(u, span - u) / ramp)))); }
+    return out;
+  };
+  if (!ev.length) {
+    if (P[0].z > 0) return [P.map(p => [p.x, p.y])];
+    return rimIn(-Math.PI / 2) ? [arcPts(-Math.PI / 2, -Math.PI / 2 + 1e-4).concat(arcPts(Math.PI / 2, Math.PI / 2 + 1e-4))] : [];
+  }
+  // silhouette intervals between consecutive crossings (sorted by angle); keep the ones inside the region
+  const C = ev.slice().sort((p, q) => p.ang - q.ang), m = C.length;
+  const norm = x => { while (x < 0) x += 2 * Math.PI; while (x >= 2 * Math.PI) x -= 2 * Math.PI; return x; };
+  const arcDir = (a0, a1, dir, r0 = 1, r1 = 1) => {
+    const span = dir > 0 ? norm(a1 - a0) : norm(a0 - a1), steps = Math.max(2, Math.ceil(span / (2.5 * D2R))), out = [], ramp = 14 * D2R;
+    for (let k = 0; k <= steps; k++) {
+      const u = k / steps * span, an = a0 + dir * u, kk = esine(clamp(Math.min(u, span - u) / ramp));
+      const base = R * lerp(r0, r1, u / (span || 1)), v = unviewv([Math.cos(an), Math.sin(an), 0], a);
+      const rr = lerp(base, R + (st.vol || 0) + (st.bumps ? bumpAt(v, st.bumps) : 0), kk);
+      out.push([Math.cos(an) * rr, Math.sin(an) * rr]);
+    }
+    return out;
+  };
+  const insideInt = k => { const c0 = C[k], c1 = C[(k + 1) % m]; const mid = c0.ang + norm(c1.ang - c0.ang) / 2; return rimIn(mid); };
+  const nextInLoop = en => { let best = null, bd = 1e9; for (const c of ev) { if (c.enter) continue; let d = c.i - en.i; if (d <= 0) d += n; if (d < bd) { bd = d; best = c; } } return best; };
+  const polys = [], used = new Set();
+  for (const start of C) {
+    if (start.enter || used.has(start)) continue;
+    const poly = []; let ex = start, guard = 0;
+    while (guard++ < 24) {
+      used.add(ex);
+      const k = C.indexOf(ex), fwd = insideInt(k), bwd = insideInt((k - 1 + m) % m);
+      let tgt, dir;
+      if (fwd && !bwd) { tgt = C[(k + 1) % m]; dir = 1; } else if (bwd && !fwd) { tgt = C[(k - 1 + m) % m]; dir = -1; }
+      else { const tf = C[(k + 1) % m], tb = C[(k - 1 + m) % m]; if (norm(tf.ang - ex.ang) <= norm(ex.ang - tb.ang)) { tgt = tf; dir = 1; } else { tgt = tb; dir = -1; } }
+      poly.push(...arcDir(ex.ang, tgt.ang, dir, ex.r, tgt.r));
+      if (!tgt.enter) break;
+      used.add(tgt);
+      const nx = nextInLoop(tgt);
+      let j = (tgt.i + 1) % n;
+      for (let g2 = 0; g2 < n; g2++) { poly.push([P[j].x, P[j].y]); if (j === nx.i) break; j = (j + 1) % n; }
+      if (nx === start || used.has(nx)) break;
+      ex = nx;
+    }
+    if (poly.length > 2) polys.push(poly);
+  }
+  return polys;
+}
+function sphRegionSVG(st, yaw, col) {
+  let s = '';
+  for (const poly of sphRegionPoly(st, yaw)) s += `<path d="M${poly.map(p => f(p[0]) + ' ' + f(p[1])).join(' L')} Z" fill="${col}" ${ink()}/>`;
+  if (st.tex) { const a = rad(yaw); for (const [p0, e0, p1, e1] of st.tex) { const A = viewv(sphv(p0 * D2R, e0 * D2R), a), B = viewv(sphv(p1 * D2R, e1 * D2R), a); if (A[2] > .25 && B[2] > .25) s += `<path d="M${f(A[0] * 100)} ${f(A[1] * 100)} L${f(B[0] * 100)} ${f(B[1] * 100)}" stroke="#000" stroke-width="3" stroke-linecap="round" opacity=".25"/>`; } }
+  return s;
+}
+// extra pieces: bun sphere, long hair panel
+function bunPos(yaw) { const v = viewv(sphv(Math.PI, 62 * D2R), rad(yaw)); return [v[0] * 108, v[1] * 108, v[2]]; }
+function npcHairBehind(style, yaw, col) {
+  let s = '';
+  if (style === 'bun') { const [x, y, z] = bunPos(yaw); if (z <= .15) s += `<circle cx="${f(x)}" cy="${f(y)}" r="38" fill="${col}" ${ink()}/>`; }
+  if (style === 'long') { const a = rad(yaw); s += longPanel(a, col, false); }
+  return s;
+}
+function npcHairFront(style, yaw, col) {
+  let s = '';
+  if (style === 'bun') { const [x, y, z] = bunPos(yaw); if (z > .15) s += `<circle cx="${f(x)}" cy="${f(y)}" r="38" fill="${col}" ${ink()}/><path d="M${f(x - 20)} ${f(y - 6)} Q${f(x)} ${f(y - 22)} ${f(x + 20)} ${f(y - 6)}" fill="none" stroke="#000" stroke-width="3" opacity=".25"/>`; }
+  if (style === 'long') s += longPanel(rad(yaw), col, true);
+  return s;
+}
+function hull(pts) { // convex hull (monotone chain), counter-clockwise
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function longPanel(a, col, front) { // hair hanging behind the head down to the shoulders
+  const c = Math.cos(a), sn = Math.sin(a), pts = [];
+  for (let i = 0; i <= 10; i++) { const u = -1 + 2 * i / 10, x = u * 92, z = -120 + 85 * u * u; pts.push([x * c + z * sn, -40 + Math.abs(u) * 10]); }
+  for (let i = 10; i >= 0; i--) { const u = -1 + 2 * i / 10, x = u * 112, z = -150 + 110 * u * u; pts.push([x * c + z * sn, 175 - Math.abs(u) * 18 + (i % 2) * 10]); }
+  if ((c < -.15) !== front) return '';
+  return `<path d="${smooth(hull(pts), true, .3)}" fill="${col}" ${ink()}/>`;
 }
 function helmetSVG(yaw, crest) {
   const sh = -Math.sin(rad(yaw)) * 10;
@@ -228,10 +351,14 @@ function helmetSVG(yaw, crest) {
 // ---------------------------------------------------------------- body pieces
 // two-bone forward / inverse kinematics; angles in degrees, 0 = straight down, + toward +x
 function fk(o, a1, a2, l1, l2) { const e = [o[0] + Math.sin(rad(a1)) * l1, o[1] + Math.cos(rad(a1)) * l1]; return [e, [e[0] + Math.sin(rad(a1 + a2)) * l2, e[1] + Math.cos(rad(a1 + a2)) * l2]]; }
-function ik(o, tgt, l1, l2, bend = 1) {
+function ik(o, tgt, l1, l2, bend = 'auto') {
   const dx = tgt[0] - o[0], dy = tgt[1] - o[1]; const d = clamp(Math.hypot(dx, dy), Math.abs(l1 - l2) + .01, l1 + l2 - .01);
   const base = Math.atan2(dx, dy), A = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
   const B = Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
+  if (bend === 'auto' || bend === 'up') { // natural default: elbow hangs lower (gravity); 'up' picks the higher one
+    const y1 = Math.cos(base + A), y2 = Math.cos(base - A);
+    bend = (bend === 'auto') === (y1 > y2) ? 1 : -1;
+  }
   return [(base + bend * A) * 180 / Math.PI, (-bend * (Math.PI - B)) * 180 / Math.PI];
 }
 const RIG = { headY: -720, neckTop: -622, neckBase: -598, shoY: -556, shoX: 104, UA: 92, FA: 92, hipY: -345, hipX: 38, TH: 122, SH: 123 };
@@ -328,7 +455,7 @@ function sleeveSVG(side, yaw, o, armAngle) { // short wide sleeve with a flat cu
   const col = o.tunicCol || PAL.tunic;
   let an = ((armAngle + 540) % 360) - 180; // normalize to [-180, 180]
   const r = clamp(an * side, -20, 160) * (an * side > 60 ? .8 : .55) * side;
-  return g(`rotate(${f(r)} 0 -10)`, `<path d="M${-side * 22} -44 L${side * 22} -44 Q${side * 40} -40 ${side * 46} -20 L${side * 52} 46 L${-side * 6} 56 L${-side * 20} 20 Z" fill="${col}" ${ink()}/><path d="M${side * 30} 30 L${side * 34} 44" stroke="${o.tunicLine || PAL.tunicLine}" stroke-width="3"/>`);
+  return g(`rotate(${f(r)} 0 -10)`, `<path d="M${-side * 24} -44 L${side * 22} -44 Q${side * 42} -40 ${side * 47} -18 L${side * 50} 24 L${-side * 10} 32 L${-side * 22} 4 Z" fill="${col}" ${ink()}/><path d="M${side * 32} 12 L${side * 35} 24" stroke="${o.tunicLine || PAL.tunicLine}" stroke-width="3"/>`);
 }
 
 /* hero(o): the main character (and NPCs via options), feet at (x, y)
@@ -345,11 +472,15 @@ function hero(o) {
   const lg = [['L', hipL, legs.L || [-5, 2], RIG.hipX * sn], ['R', hipR, legs.R || [5, -2], -RIG.hipX * sn]].map(([n, h, an, depth]) => { const [k, ft] = fk(h, an[0], an[1], RIG.TH, RIG.SH); return { n, h, k, ft, ang: an[0] + an[1], depth }; });
   let dy = 0; if (p.ground) dy = -(Math.max(lg[0].ft[1], lg[1].ft[1]) + 100);
   const breathe = Math.sin(p.t * 2.1 + p.phase) * 2.5;
+  const idle = p.idle == null ? 1 : p.idle; // gentle weight shift when standing
+  p.lean = (p.lean || 0) + Math.sin(p.t * 1.05 + p.phase) * 1.2 * idle;
   // arms
   const shL = [-RIG.shoX * c, RIG.shoY], shR = [RIG.shoX * c, RIG.shoY];
-  const angOf = (side, A, sh) => !A ? (side < 0 ? [-12, 4] : [12, -4]) : A.to ? ik(sh, A.to, RIG.UA, RIG.FA, A.bend == null ? (side < 0 ? 1 : -1) : A.bend) : A.a;
+  // per-arm lengths: 'fore'/'upper' < 1 foreshorten a segment that points toward the camera
+  const lens = A => [RIG.UA * ((A && A.upper) || 1), RIG.FA * ((A && A.fore) || 1)];
+  const angOf = (side, A, sh) => { const [l1, l2] = lens(A); return !A ? (side < 0 ? [-12, 4] : [12, -4]) : A.to ? ik(sh, A.to, l1, l2, A.bend == null ? 'auto' : A.bend) : A.a; };
   const aL = angOf(-1, arms.L, shL), aR = angOf(1, arms.R, shR);
-  const AL = fk(shL, aL[0], aL[1], RIG.UA, RIG.FA), AR = fk(shR, aR[0], aR[1], RIG.UA, RIG.FA);
+  const AL = fk(shL, aL[0], aL[1], ...lens(arms.L)), AR = fk(shR, aR[0], aR[1], ...lens(arms.R));
   const armD = { L: RIG.shoX * sn, R: -RIG.shoX * sn }; // depth: + toward camera
   const toe = clamp(sn * 1.3, -1, 1);
   const line = (pts, w = LINE) => `<path d="M${pts.map(q => f(q[0]) + ' ' + f(q[1])).join(' L')}" fill="none" ${ink(w)}/>`;

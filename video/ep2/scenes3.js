@@ -1,5 +1,11 @@
 // Episode 2 (v3): "What If You Woke Up in Ancient Rome?" — first minute, built on the spec rig (lib3.js)
-const cam = (inner, cx, cy, z, rot = 0) => g(`translate(960 540) rotate(${f(rot)}) scale(${f(z * 1000) / 1000}) translate(${f(-cx)} ${f(-cy)})`, inner);
+let CAMT = 0; // time used for the handheld drift
+const cam = (inner, cx, cy, z, rot = 0) => { const dx = noise1(CAMT * .35) * 5, dy = noise1(CAMT * .3 + 9) * 4, dr = noise1(CAMT * .25 + 3) * .25; return g(`translate(960 540) rotate(${f(rot + dr)}) scale(${f(z * 1000) / 1000}) translate(${f(-cx - dx)} ${f(-cy - dy)})`, inner); };
+// walking without foot sliding: phase follows the distance travelled
+const STRIDE = 215;
+const walkPh = (x, x0, s = 1, amp = 1) => Math.abs(x - x0) / (STRIDE * s * Math.max(.3, amp)) * Math.PI;
+// blink when the head turns quickly, hair lags behind head turns
+const turnFX = (t, fn, seed = 0) => { const v = (fn(t + .03) - fn(t - .03)) / .06; return { blink: Math.max(blinkK(t, seed), clamp((Math.abs(v) - 120) / 200)), hairRot: clamp(-(fn(t) - fn(t - .12)) * .12, -7, 7) }; };
 const shake = (t, a) => [noise1(t * 23) * a, noise1(t * 23 + 40) * a];
 const lf = (S, i, fr) => S.L[i][0] + (S.L[i][1] - S.L[i][0]) * fr;
 const label = (str, x, y, t, t0, o = {}) => t < t0 ? '' : text(str, x, y, Object.assign({ s: pop(t, t0, .5), sw: 12 }, o, { op: (o.op == null ? 1 : o.op) * fadeI(t, t0, .15) }));
@@ -177,16 +183,16 @@ SC.attic = {
     if (shot === 'A') {
       // walk in with a box, set it down, wipe forehead
       const walkEnd = 2.3, x = K(t, [[0, -180], [walkEnd, 720, eout]]);
-      const walking = t < walkEnd, wc = walkCycle(t * 7.2, walking ? 1 - seg(t, walkEnd - .4, walkEnd) : 0);
+      const walking = t < walkEnd, wamp = walking ? 1 - seg(t, walkEnd - .4, walkEnd) : 0, wc = walkCycle(walkPh(x, -180, 1, 1), wamp);
       const yaw = K(t, [[walkEnd - .2, 90], [walkEnd + .4, 25]]);
       const crouch = Math.sin(seg(t, walkEnd + .3, walkEnd + 1.1) * Math.PI);
       const boxDown = seg(t, walkEnd + .7, walkEnd + .8) > 0;
       Object.assign(o, { x, y: GY + wc.bob * .9 + crouch * 30, s: 1, yaw, lean: wc.lean + crouch * 14, legs: walking ? wc.legs : { L: [-8 - crouch * 14, crouch * 30], R: [8 + crouch * 4, crouch * 28] }, ground: true });
       o.face = E(t, [[0, 'neutral'], [walkEnd + 1.3, 'sad'], [walkEnd + 1.6, 'sleepy']]);
       const wipe = seg(t, walkEnd + 1.2, walkEnd + 2.2);
-      if (!boxDown) o.arms = { L: { to: [-70, -470 + crouch * 30], bend: 1 }, R: { to: [70, -470 + crouch * 30], bend: -1 } };
-      else o.arms = { L: { a: [-12, 4] }, R: wipe > 0 && wipe < 1 ? { to: [lerp(-60, 70, esine(wipe)), -770 + Math.sin(wipe * Math.PI) * 10], bend: -1 } : { a: [12, -4] } };
-      if (!boxDown) o.frontExtra = g('translate(0 -440)', boxSVG(170, 120, '#c79a62'));
+      if (!boxDown) o.arms = { L: { to: [-78, -440 + crouch * 30], fore: .6 }, R: { to: [78, -440 + crouch * 30], fore: .6 } };
+      else o.arms = { L: { a: [-12, 4] }, R: wipe > 0 && wipe < 1 ? { to: [lerp(-60, 70, esine(wipe)), -770 + Math.sin(wipe * Math.PI) * 10], bend: 'up' } : { a: [12, -4] } };
+      if (!boxDown) o.frontExtra = g('translate(0 -410)', boxSVG(170, 120, '#c79a62'));
       hero_ += shadow(x, GY + 4, 110) + hero(o);
       if (boxDown) { hero_ += g(`translate(${f(x + 210)} ${GY})`, boxSVG(170, 120, '#c79a62')); const pk = seg(t, walkEnd + .8, walkEnd + 1.8); if (pk < 1) for (let i = 0; i < 5; i++) hero_ += `<circle cx="${f(x + 210 + (i - 2) * 50 * (1 + pk))}" cy="${f(GY - 20 - pk * 50 - i % 2 * 20)}" r="${f(22 * (1 - pk) + 8)}" fill="#d9c8ab" ${ink(3)} opacity="${f(1 - pk)}"/>`; }
       world += hero_;
@@ -199,10 +205,11 @@ SC.attic = {
       const tosses = [[tB + .9, sockSVG], [tB + 1.7, bookSVG], [lf(S, 0, .6), duckSVG]];
       let throwArm = 0; for (const [t0] of tosses) throwArm = Math.max(throwArm, Math.sin(seg(t, t0 - .25, t0 + .2) * Math.PI));
       const rl = [90 + noise1(t * 2.2) * 30, -430 + noise1(t * 3) * 25], rr = [170 + noise1(t * 2.5 + 9) * 30, -440 + noise1(t * 2.7 + 2) * 25];
-      o.arms = rum ? { L: { to: rl, bend: 1 }, R: throwArm > 0 ? { a: [lerp(30, 160, throwArm), lerp(-40, 20, throwArm)] } : { to: rr, bend: -1 } } : { L: { to: [60, -480], bend: 1 }, R: { to: [160, -470], bend: -1 } };
+      o.arms = rum ? { L: { to: rl }, R: throwArm > 0 ? { a: [lerp(30, 160, throwArm), lerp(-40, 20, throwArm)] } : { to: rr } } : { L: { to: [70, -470] }, R: { to: [160, -460] } };
       o.face = E(t, [[tB, 'neutral'], [tB + 1.0, 'smirk' in EMO ? 'smile' : 'smile'], [lf(S, 0, .55), 'neutral'], [tFind, 'surprise'], [tFind + .9, 'think']]);
       o.look = rum ? [.7, .6] : K(t, [[tFind, [.6, .5]], [tFind + .8, [0, 0]]]);
-      o.headYaw = rum ? 0 : K(t, [[tFind + .5, 0], [tFind + 1, -25]]);
+      const hyB = tt => tt < tFind ? 0 : K(tt, [[tFind + .5, 0], [tFind + 1, -25, eback]]);
+      o.headYaw = hyB(t); Object.assign(o, turnFX(t, hyB, 1));
       world += shadow(900, GY + 4, 110) + hero(o);
       for (const [t0, svg] of tosses) { const k = seg(t, t0, t0 + 1.1); if (k > 0 && k < 1) world += g(T(lerp(1000, 300, k), lerp(640, 900, k) - Math.sin(k * Math.PI) * 420, 1, k * 720), svg); }
       world += sparkle(CHX + Math.sin(t * 3) * 14, GY - 360, (.8 + Math.sin(t * 9) * .25) * fadeI(t, tFind - .3, .3), t * 70);
@@ -212,15 +219,16 @@ SC.attic = {
     // shots C/D/E share the standing pose with the hourglass
     const flipK = eback(seg(t, tFlip, tFlip + .8)), antic = Math.sin(seg(t, tFlip - .45, tFlip) * Math.PI) * (t < tFlip ? 1 : 0);
     const lift = shot === 'C' ? eout(seg(t, tC, tC + 1.4)) : 1;
-    const hx = 0, hy = lerp(-330, -470, lift) - antic * 30 - Math.sin(seg(t, tFlip, tFlip + .5) * Math.PI) * 70;
+    const hx = 0, hy = lerp(-380, -480, lift) - antic * 30 - Math.sin(seg(t, tFlip, tFlip + .5) * Math.PI) * 70;
     const ang = flipK * 180;
     const hand = s2 => [hx + Math.cos(rad(ang)) * 56 * s2, hy + Math.sin(rad(ang)) * 56 * s2];
-    Object.assign(o, { x: 930, y: GY, s: 1, yaw: shot === 'C' ? 10 : 15, squash: 1 - antic * .05, arms: { L: { to: hand(-1), bend: 1 }, R: { to: hand(1), bend: -1 } } });
+    Object.assign(o, { x: 930, y: GY, s: 1, yaw: shot === 'C' ? 10 : 15, squash: 1 - antic * .05, arms: { L: { to: hand(-1), fore: .55, upper: .95 }, R: { to: hand(1), fore: .55, upper: .95 } } });
     o.frontExtra = g(`translate(${hx} ${f(hy)}) rotate(${f(ang)})`, hourglassSVG(t < tFlip ? .3 : .3 + clamp(seg(t, tFlip + .8, D)) * .6, Math.min(glow, .15), t));
     world += flatGlow(930, GY + hy, 200 * (1 + Math.sin(t * 5) * .05) * (.6 + glow * .5), '#ffd66b', glow * .7);
     o.face = E(t, [[tC, 'surprise'], [lf(S, 1, .55), 'surprise'], [lf(S, 1, .78), 'joy'], [tD, 'smug'], [tFlip + .1, 'grin'], [tE + .3, 'surprise'], [tE + .8, 'fear']]);
     o.look = K(t, [[tC, [0, .6]], [lf(S, 1, .5), [0, .4]], [tD, [.5, -.2]], [tFlip, [0, -.2]], [tE + .2, [-.8, -.3]], [tE + .8, [0, 0]]]);
-    o.headYaw = K(t, [[tE + .2, 0], [tE + .5, -70, eout], [tE + .9, 0]]);
+    const hyE = tt => K(tt, [[tE + .2, 0], [tE + .5, -70, eback], [tE + .9, 0, eback]]);
+    o.headYaw = hyE(t); Object.assign(o, turnFX(t, hyE, 1));
     o.tilt = K(t, [[tC, 0], [lf(S, 1, .8), -6], [tD, 4], [tFlip, 0]]);
     let heroS = hero(o);
     const portalK = eout(seg(t, tE, tE + .6));
@@ -249,7 +257,7 @@ SC.arrival = {
   draw(t, S) {
     const L = S.L.map(l => l[0]), D = S.dur, tWide = lf(S, 1, .58);
     let out = '';
-    if (t < tWide + .5) {
+    if (t < tWide) {
       let pov = skyPOV(t);
       const faces = [
         { k: 'merchant', t0: L[1] + .1, a: [-300, 300], b: [500, 420], r: 50, face: 'anger', look: [.6, .5] },
@@ -265,7 +273,7 @@ SC.arrival = {
       }
       const blurAmt = Math.max(0, 14 * (1 - seg(t, .8, 3.2))) + Math.sin(clamp((t - 3.4) / .5) * Math.PI) * 8;
       if (blurAmt > .3) pov = `<defs><filter id="pblur"><feGaussianBlur stdDeviation="${f(blurAmt)}"/></filter></defs><g filter="url(#pblur)">${pov}</g>`;
-      const openK = K(t, [[0, 0], [.8, 0], [1.6, .55], [2.2, .45], [3.1, 1], [3.4, 1], [3.55, .05], [3.75, 1]], esine);
+      const openK = K(t, [[0, 0], [.8, 0], [1.6, .55], [2.2, .45], [3.1, 1], [3.4, 1], [3.55, .05], [3.75, 1], [tWide - .28, 1], [tWide, 0, ein]], esine);
       out += cam(pov, 960, 540, 1 + .04 * Math.sin(t * .6)) + lids(openK);
     }
     if (t > tWide) {
@@ -276,21 +284,22 @@ SC.arrival = {
       // merchant walks in (profile), stops, points and yells
       const tm = L[2] - .3, tStop = tm + 1.0;
       const mx = K(t, [[tm, 1460], [tStop, 1270, eout]]);
-      const walking = t > tm && t < tStop, wc = walkCycle((t - tm) * 9, walking ? 1 - seg(t, tStop - .3, tStop) : 0);
+      const walking = t > tm && t < tStop, wc = walkCycle(walkPh(mx, 1460, .86), walking ? 1 - seg(t, tStop - .3, tStop) : 0);
       const yelling = t > tStop && t < lf(S, 2, .78);
       const pointK = eback(seg(t, tStop, tStop + .35));
-      w += shadow(mx, GY + 2, 95) + npc('merchant', { x: mx, y: GY + wc.bob * .85, s: .86, t, yaw: K(t, [[tStop, -90], [tStop + .4, -45]]), legs: walking ? wc.legs : undefined, lean: yelling ? -6 + Math.sin(t * 10) * 2 : wc.lean, face: yelling ? EMO.yell : EMO.anger, look: [-.9, .3], blink: blinkK(t, 3), arms: t > tStop ? { L: { a: [lerp(-12, -88, pointK) + Math.sin(t * 12) * 4 * yelling, 0] }, R: { a: [30, -60] } } : wc.arms, hands: { L: t > tStop ? 'point' : 'fist' } });
+      w += shadow(mx, GY + 2, 95) + npc('merchant', { x: mx, y: GY + wc.bob * .85, s: .86, t, yaw: K(t, [[tStop, -90], [tStop + .4, -45]]), legs: walking ? wc.legs : undefined, lean: yelling ? -6 + Math.sin(t * 10) * 2 : wc.lean, face: yelling ? mix(EMO.yell, EMO.anger, clamp(.5 - .5 * Math.sin(t * 17) * Math.sin(t * 5.3 + 1))) : EMO.anger, look: [-.9, .3], blink: blinkK(t, 3), headY: yelling ? Math.sin(t * 17) * 4 : 0, arms: t > tStop ? { L: { a: [lerp(-12, -88, pointK) + Math.sin(t * 12) * 4 * yelling, 0] }, R: { a: [30, -60] } } : wc.arms, hands: { L: t > tStop ? 'point' : 'fist' } });
       // hero: lying -> sits up -> looks around -> recoils -> thinks
-      const tt = t - tWide, sit = eio(seg(tt, .6, 1.9));
+      const tt = t - tWide, sit = eback(seg(tt, .6, 1.9));
+      const hyA = T2 => K(T2, [[tWide + 1.9, 0], [tWide + 2.3, -55, eback], [tWide + 3.0, -55], [tWide + 3.4, 40, eback], [tStop - .2, 40], [tStop, 30]]) + Math.sin((T2 - tWide) * 18) * 14 * (1 - seg(T2 - tWide, 1.9, 2.5)) * seg(T2 - tWide, 1.5, 1.9);
       const recoil = eout(seg(t, tStop, tStop + .3)) * (1 - eio(seg(t, lf(S, 2, .78), lf(S, 2, .95))));
       const thinking = t > lf(S, 2, .82);
       const ho = {
         x: 960, s: .9, t, ground: false, yaw: lerp(60, 20, sit), legs: { L: [86, -4], R: [80, 2] }, lean: lerp(-84, -8, sit) - recoil * 14,
-        arms: thinking ? { L: { a: [-30, 20] }, R: { to: [26, -628], bend: -1 } } : { L: { a: [lerp(-40, -34, sit), lerp(10, 26, sit)] }, R: { a: [lerp(150, 36, sit) + recoil * 60, lerp(0, 20, sit)] } },
+        arms: thinking ? { L: { a: [-30, 20] }, R: { to: [26, -628] } } : { L: { a: [lerp(-40, -34, sit), lerp(10, 26, sit)] }, R: { a: [lerp(150, 36, sit) + recoil * 60, lerp(0, 20, sit)] } },
         hands: thinking ? { R: 'thumb' } : {},
         face: E(t, [[tWide, 'dazed'], [tWide + 2.0, 'surprise'], [tWide + 2.6, 'neutral'], [tStop, 'fear'], [lf(S, 2, .82), 'think']]),
-        headYaw: K(t, [[tWide + 1.9, 0], [tWide + 2.3, -55], [tWide + 3.0, -55], [tWide + 3.4, 40], [tStop - .2, 40], [tStop, 30]]) + Math.sin(tt * 18) * 14 * (1 - seg(tt, 1.9, 2.5)) * seg(tt, 1.5, 1.9),
-        look: K(t, [[tWide + 2.0, [0, -.3]], [tWide + 2.4, [-.8, 0]], [tWide + 3.3, [.8, 0]], [lf(S, 2, .82), [.4, -.6]]]), blink: blinkK(t, 2), wave: .4, capeLen: -190,
+        headYaw: hyA(t),
+        look: K(t, [[tWide + 2.0, [0, -.3]], [tWide + 2.4, [-.8, 0]], [tWide + 3.3, [.8, 0]], [lf(S, 2, .82), [.4, -.6]]]), ...turnFX(t, hyA, 2), wave: .4, capeLen: -190, idle: 0,
       };
       ho.y = GY - 4 + (345 - 40) * .9;
       w += shadow(1040, GY + 2, 170) + hero(ho);
@@ -298,7 +307,7 @@ SC.arrival = {
       if (yelling) { const k = pop(t, tStop, .4), [hx, hy] = shake(t, 4); w += g(T(1470 + hx, 330 + hy, k), `<path d="${smooth([[-230, -90], [230, -95], [250, 60], [40, 70], [10, 140], [-20, 70], [-240, 64]], true, .25)}" fill="#fff" ${ink(5)}/>` + text('QUID FACIS?!', 0, -10, { size: 86, fill: '#a8322d' })); }
       const z = K(t, [[tWide, 1.35], [tWide + 3, 1.15], [D, 1.1]], esine);
       let wide = cam(w, 1030, K(t, [[tWide, 690], [tWide + 3, 650]]), z) + label('LATIN', 960, 130, t, lf(S, 2, .84), { size: 120 }) + label('(the language of Rome)', 960, 225, t, lf(S, 2, .9), { size: 52, fill: '#5d4a3a', sw: 8 });
-      out = t < tWide + .5 ? out + op(esine(seg(t, tWide, tWide + .5)), wide) : wide;
+      out = wide + (t < tWide + .4 ? lids(esine(seg(t, tWide + .05, tWide + .4))) : '');
     }
     if (t < .5) out += `<rect width="1920" height="1080" fill="#fffaf0" opacity="${f(1 - esine(t / .5))}"/>`;
     return out;
@@ -324,7 +333,7 @@ SC.title = {
     let w = romeStreet(t, { px: 150 + t * 12 });
     const walkers = [['worker', -200, 80, .78, 90], ['lady', 2150, -64, .8, -90], ['soldier', -560, 90, .8, 90], ['oldman', 2350, -50, .8, -90], ['boy', -950, 120, .8, 90]];
     walkers.forEach(([k, x0, v, sc, yaw], i) => {
-      const x = x0 + v * t, wc = walkCycle(t * (Math.abs(v) / 11) + i, .9);
+      const x = x0 + v * t, wc = walkCycle(walkPh(x, x0, sc, .9) + i, .9);
       if (x > -200 && x < 2150) w += shadow(x, GY - 20, 80) + npc(k, { x, y: GY - 22 + wc.bob * sc, s: sc, yaw, t, legs: wc.legs, arms: wc.arms, lean: wc.lean, face: EMO.neutral, blink: blinkK(t, i), phase: i });
     });
     // hero: gets up from sitting, looks around in awe, then checks the hourglass
@@ -334,12 +343,13 @@ SC.title = {
     ho.legs = { L: [lerp(86, -6, up), lerp(-4, 2, up) + Math.sin(up * Math.PI) * -60], R: [lerp(80, 6, up), lerp(2, -2, up) - Math.sin(up * Math.PI) * 30] };
     ho.y = lerp(GY - 4 + 305 * 1.05 * .86, GY + 6, up) - hop * 30;
     ho.lean = lerp(-8, 0, up) + Math.sin(up * Math.PI) * 18;
-    ho.yaw = K(t, [[1.6, 15], [lf(S, 0, .2), -60], [lf(S, 0, .45), 60], [lf(S, 0, .7), 0]]);
+    const yawT = tt => K(tt, [[1.6, 15], [lf(S, 0, .2), -60, eback], [lf(S, 0, .45), 60, eback], [lf(S, 0, .7), 0, eback]]);
+    ho.yaw = yawT(t); Object.assign(ho, turnFX(t, yawT, 5)); ho.idle = up;
     ho.face = E(t, [[0, 'dazed'], [1.4, 'surprise'], [lf(S, 0, .45), 'joy'], [tLost, 'neutral'], [tShake, 'think'], [lf(S, 1, .75), 'sad']]);
     ho.look = K(t, [[1.6, [0, -.3]], [lf(S, 0, .45), [0, -.2]], [lf(S, 0, .7), [0, 0]], [tLost + .3, [.4, .3]]]);
     const shk = t > tShake && t < lf(S, 1, .8) ? Math.sin(t * 26) * 16 : 0;
     if (t < tLost) ho.arms = { L: { a: [K(t, [[lf(S, 0, .4), -12], [lf(S, 0, .5), -150]]), K(t, [[lf(S, 0, .4), 4], [lf(S, 0, .5), -10]])] }, R: { a: [K(t, [[lf(S, 0, .4), 12], [lf(S, 0, .5), 150]]), K(t, [[lf(S, 0, .4), -4], [lf(S, 0, .5), 10]])] } };
-    else { const hp = K(t, [[tLost, [80, -420]], [tLost + .5, [60, -470]]]); ho.arms = { L: { a: [-12, 4] }, R: { to: [hp[0] + shk * .4, hp[1] + shk], bend: -1 } }; ho.frontExtra = g(`translate(${f(hp[0] + 34 + shk * .4)} ${f(hp[1] - 30 + shk)}) rotate(${f(shk * .8)}) scale(.62)`, hourglassSVG(1, 0, t)); }
+    else { const hp = K(t, [[tLost, [80, -420]], [tLost + .5, [60, -470]]]); ho.arms = { L: { a: [-12, 4] }, R: { to: [hp[0] + shk * .4, hp[1] + shk] } }; ho.frontExtra = g(`translate(${f(hp[0] + 34 + shk * .4)} ${f(hp[1] - 30 + shk)}) rotate(${f(shk * .8)}) scale(.62)`, hourglassSVG(1, 0, t)); }
     if (t > lf(S, 1, .75)) ho.lean = Math.sin(seg(t, lf(S, 1, .75), lf(S, 1, 1)) * Math.PI) * 6;
     w += shadow(960, GY + 8, 130) + hero(ho);
     const z = K(t, [[0, 1.8], [1.6, 1.6], [lf(S, 0, .45), 1.0], [tLost, 1.0], [tLost + 1.0, 1.35]], eio);
@@ -365,6 +375,6 @@ window.frameSVG = (T0) => {
   let sc = TL[TL.length - 1];
   for (const x of TL) if (T0 >= x.start && T0 < x.start + x.dur) { sc = x; break; }
   if (!SC[sc.id]) return text('[ ' + sc.id + ' ]', 960, 540, { size: 80 });
-  const t = T0 - sc.start;
+  const t = T0 - sc.start; CAMT = T0;
   return DEFS + SC[sc.id].draw(t, { dur: sc.dur, L: sc.lines }) + `<image href="../assets/paper.jpg" x="0" y="0" width="1920" height="1080" opacity=".28" style="mix-blend-mode:multiply"/>`;
 };
