@@ -21,7 +21,6 @@ from make_video import (W, H, FPS, GOLD, WHITE, text, wrap_text, fade, ease, fon
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA = os.path.join(HERE, "media")
 CACHE = os.path.join(HERE, "cache")
-CREDITS = json.load(open(os.path.join(HERE, "credits.json"), encoding="utf-8"))
 
 mv.DURATION = DURATION = 168.0
 
@@ -87,8 +86,21 @@ def extract_video(key, start, dur):
 def video_frame(key, start, dur, lt):
     d = extract_video(key, start, dur)
     n = len(os.listdir(d))
-    i = min(n, max(1, int(lt * FPS) + 1))
+    i = int(lt * FPS) % (2 * n - 2) if n > 1 else 0
+    i = (i if i < n else 2 * n - 2 - i) + 1
     return Image.open(os.path.join(d, f"{i:05d}.jpg")).convert("RGB")
+
+
+VIDEOS = []  # (ключ, начало, длительность) — нарезаются заранее в main()
+
+
+def vshot(key, start=0, dur=12, blur=0):
+    if (key, start, dur) not in VIDEOS:
+        VIDEOS.append((key, start, dur))
+    def fn(p, lt):
+        im = video_frame(key, start, dur, lt)
+        return im.filter(ImageFilter.GaussianBlur(blur)) if blur else im
+    return fn
 
 
 def shade(img, top=0.35, bottom=0.65):
@@ -144,6 +156,7 @@ def emblem(h):
 # ---------------------------------------------------------------- scenes
 def scene_intro(t):          # 0 – 12
     img = shade(video_frame("milkyway", 0, 12, t), 0.25, 0.55)
+    caption(img, "Обсерватория Ассы-Тургень, Казахстан", fade(t, 1, 12.6, 1, 0.7))
     em = emblem(330)
     paste_alpha(img, em, (W / 2 - em.width / 2, 250 + (1 - ease((t - 1) / 2)) * 30), fade(t, 1.0, 12.6, 2, 0.7))
     text(img, "25 ҚАЗАН", 160, 110, fade(t, 3.5, 12.6, 1.5, 0.7), GOLD, serif=True)
@@ -153,7 +166,7 @@ def scene_intro(t):          # 0 – 12
 
 
 def scene_flag(t):           # 12 – 26
-    bg = panorama("astana_skyline", t / 14, 0.15, 0.55).filter(ImageFilter.GaussianBlur(3))
+    bg = vshot("sunrise2", 2, 14, blur=4)(0, t)
     img = shade(bg, 0.25, 0.5)
     flag = wave_flag(official_flag(1400), t, 1400)
     paste_alpha(img, flag, ((W - flag.width) / 2, 110), fade(t, 0, 14.4, 1.0, 0.6))
@@ -166,11 +179,9 @@ def scene_flag(t):           # 12 – 26
 
 
 def scene_declaration(t):    # 26 – 54
-    bg = shots(t, [(14, lambda p, lt: video_frame("archive1992", ARCH_START, 14, lt)),
-                   (14, lambda p, lt: ken_burns("independence_almaty", p, (1.0, 1.15), (0.5, 0.45, 0.5, 0.35)))])
+    bg = shots(t, [(14, vshot("sunrise", 0, 14)), (14, vshot("berkut", 1, 14))])
     img = shade(bg, 0.45, 0.75)
     a = fade(t, 0, 28.4, 1, 0.6)
-    caption(img, "Архивные кадры, 1992 г." if t < 14 else "Монумент Независимости, Алматы", a)
     text(img, "1990", 260, 150, fade(t, 0.6, 28.4, 1.2, 0.6), GOLD, serif=True)
     text(img, "жылғы 25 қазан  ·  25 октября 1990 года", 375, 44, fade(t, 1.4, 28.4, 1.2, 0.6))
     wrap_text(img, "Қазақ КСР-інің Мемлекеттік егемендігі туралы декларация қабылданды",
@@ -182,9 +193,10 @@ def scene_declaration(t):    # 26 – 54
 
 
 def scene_history(t):        # 54 – 80
-    img = shade(panorama("akorda", t / 26, 0.3, 0.7), 0.5, 0.7)
+    img = shade(shots(t, [(13, vshot("milkyway", 6, 13)), (13, vshot("sunrise2", 6, 13))]), 0.5, 0.7)
     al = fade(t, 0, 26.4, 1, 0.6)
-    caption(img, "Акорда, Астана", al)
+    if t < 13:
+        caption(img, "Обсерватория Ассы-Тургень, Казахстан", al)
     text(img, "МЕРЕКЕНІҢ ТАРИХЫ  ·  ИСТОРИЯ ПРАЗДНИКА", 150, 50, al, GOLD, serif=True)
     starts = [1.0, 6.5, 11.0]
     cw, ch, gap = 540, 600, 50
@@ -217,29 +229,15 @@ def scene_history(t):        # 54 – 80
     return img
 
 
-TL_BG = [("kazakh_eli", "Монумент «Қазақ Елі», Астана"),
-         ("parade_mp", "Военный парад, Астана, 2015"),
-         ("bayterek_view", "Вид с Байтерека, Астана"),
-         ("akorda", "Акорда, Астана"),
-         ("astana_skyline", "Астана")]
+TL_BG = [("milkyway", 0), ("soldier_sil", 0), ("berkut", 6), ("sunrise", 6), ("jets", 2)]
 
 
 def scene_timeline(t):       # 80 – 100
     seg = 20.0 / len(TIMELINE)
     idx = max(0, min(int(t // seg), len(TIMELINE) - 1))
     lt = t - idx * seg
-    key, cap = TL_BG[idx]
-    if key in ("akorda", "astana_skyline"):
-        bg = panorama(key, lt / seg, 0.45, 0.6)
-    else:
-        bg = ken_burns(key, lt / seg, (1.05, 1.15))
-    img = shade(bg, 0.5, 0.75)
-    if lt < 0.4 and idx > 0:  # мягкая смена фона
-        pkey = TL_BG[idx - 1][0]
-        prev = panorama(pkey, 1, 0.45, 0.6) if pkey in ("akorda", "astana_skyline") else ken_burns(pkey, 1, (1.05, 1.15))
-        img = Image.blend(shade(prev, 0.5, 0.75), img, lt / 0.4)
+    img = shade(shots(t, [(4, vshot(k, st, 4)) for k, st in TL_BG]), 0.5, 0.75)
     al = fade(t, 0, 20.4, 1, 0.6)
-    caption(img, cap, al)
     text(img, "ТАРИХ БЕЛЕСТЕРІ  ·  ВЕХИ ИСТОРИИ", 150, 50, al, GOLD, serif=True)
     d = ImageDraw.Draw(img)
     y = 300
@@ -262,17 +260,9 @@ def scene_timeline(t):       # 80 – 100
     return img
 
 
-ARMY = [("parade_bmp", "Военный парад, Астана, 7 мая 2015"),
-        ("soldiers_2024", "Военнослужащие ВС РК, Астана, 2024"),
-        ("parade_2s3", "Военный парад, Астана, 7 мая 2015"),
-        ("air_force", "Военно-воздушные силы РК")]
-
-
 def scene_army(t):           # 100 – 120
-    seq = [(5, (lambda k: lambda p, lt: ken_burns(k, p, (1.02, 1.14), (0.45, 0.5, 0.55, 0.5)))(k)) for k, _ in ARMY]
-    img = shade(shots(t, seq), 0.35, 0.8)
+    img = shade(shots(t, [(7, vshot("jets", 0, 7)), (7, vshot("soldiers_walk", 3, 7)), (6, vshot("soldier_sil", 4, 6))]), 0.35, 0.8)
     al = fade(t, 0, 20.4, 1, 0.6)
-    caption(img, ARMY[min(int(t // 5), 3)][1], al)
     text(img, "ҚАЗАҚСТАН РЕСПУБЛИКАСЫНЫҢ ҚАРУЛЫ КҮШТЕРІ", 130, 54, fade(t, 0.5, 20.4, 1, 0.6), GOLD, serif=True)
     text(img, "Вооружённые Силы Республики Казахстан", 200, 38, fade(t, 1.0, 20.4, 1, 0.6))
     if t < 10.0:
@@ -304,11 +294,8 @@ def scene_army(t):           # 100 – 120
 
 
 def scene_values(t):         # 120 – 134
-    seq = [(7, lambda p, lt: ken_burns("steppe_eagle14", p, (1.0, 1.12), (0.5, 0.5, 0.5, 0.45))),
-           (7, lambda p, lt: ken_burns("rep_guard", p, (1.05, 1.15)))]
-    img = shade(shots(t, seq), 0.55, 0.7)
+    img = shade(shots(t, [(7, vshot("soldier_sil", 0, 7)), (7, vshot("berkut", 8, 7))]), 0.55, 0.7)
     al = fade(t, 0, 14.4, 1, 0.6)
-    caption(img, "Учения «Степной орёл»" if t < 7 else "Республиканская гвардия РК", al)
     paste_alpha(img, mv.assets()["orn_v"], (40, 0), al * 0.8)
     paste_alpha(img, mv.assets()["orn_v"], (W - 110, 0), al * 0.8)
     for i, (kz, ru) in enumerate(VALUES):
@@ -321,10 +308,10 @@ def scene_values(t):         # 120 – 134
 
 
 def scene_congrats(t):       # 134 – 152
-    img = shade(panorama("astana_night", t / 18, 0.2, 0.8), 0.45, 0.75)
+    img = shade(vshot("milkyway", 0, 18)(0, t), 0.45, 0.75)
     al = fade(t, 0, 18.4, 1, 0.6)
     frame_borders(img, al)
-    caption(img, "Ночная Астана", al)
+    caption(img, "Обсерватория Ассы-Тургень, Казахстан", al)
     em = emblem(170)
     paste_alpha(img, em, (W / 2 - em.width / 2, 120), al)
     text(img, "Құрметті профессор-оқытушылар құрамы, курсанттар мен студенттер!", 360, 42,
@@ -340,7 +327,7 @@ def scene_congrats(t):       # 134 – 152
 
 
 def scene_final(t):          # 152 – 162
-    bg = ken_burns("kazakh_eli", t / 10, (1.0, 1.1)).filter(ImageFilter.GaussianBlur(2))
+    bg = vshot("sunrise", 4, 10, blur=3)(0, t)
     img = shade(bg, 0.3, 0.6)
     flag = wave_flag(official_flag(1200), t + 30, 1200)
     paste_alpha(img, flag, ((W - flag.width) / 2, 60), fade(t, 0, 20, 1.0, 1))
@@ -352,33 +339,16 @@ def scene_final(t):          # 152 – 162
     return img
 
 
-def credit_lines():
-    order = ["flag", "emblem", "milkyway", "archive1992", "astana_skyline", "independence_almaty", "akorda",
-             "kazakh_eli", "parade_mp", "bayterek_view", "parade_bmp", "soldiers_2024", "parade_2s3",
-             "air_force", "steppe_eagle14", "rep_guard", "astana_night"]
-    out = []
-    for k in order:
-        c = CREDITS.get(k)
-        if c:
-            author = (c["author"] or "—").replace("\n", " ")
-            if len(author) > 60:
-                author = author[:57] + "…"
-            out.append(f"{author} — {c['license']}")
-    return out
-
-
 def scene_credits(t):        # 162 – 168
     img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
     a = fade(t, 0.3, 6.5, 0.8, 1.0)
-    text(img, "Фото и видео: Wikimedia Commons", 90, 40, a, GOLD, serif=True, shadow=False)
-    lines = credit_lines()
-    half = (len(lines) + 1) // 2
-    for i, ln in enumerate(lines):
-        col, row = divmod(i, half)
-        text(img, ln, 180 + row * 46, 22, a * 0.9, (220, 220, 220), bold=False, shadow=False,
-             x=W / 4 + col * W / 2)
-    text(img, "Озвучка: RHVoice  ·  Музыка: синтезирована для этого видео", H - 70, 24, a * 0.8,
-         (200, 200, 200), bold=False, shadow=False)
+    lines = [("Использованные материалы", 44, GOLD),
+             ("Флаг и герб Республики Казахстан — Wikimedia Commons (общественное достояние)", 28, WHITE),
+             ("Млечный Путь над обсерваторией Ассы-Тургень — Astrobond, Wikimedia Commons, CC BY-SA 4.0", 28, WHITE),
+             ("Видео: Mixkit (mixkit.co), бесплатная лицензия Mixkit", 28, WHITE),
+             ("Озвучка: синтезатор речи RHVoice  ·  Музыка: создана для этого видео", 28, WHITE)]
+    for i, (ln, size, col) in enumerate(lines):
+        text(img, ln, 300 + i * 110 + (40 if i else 0), size, a, col, serif=(i == 0), bold=(i == 0), shadow=False)
     return img
 
 
@@ -391,6 +361,10 @@ ARCH_START = 0.0
 
 
 def render(i):
+    return render_img(i).convert("RGB").tobytes()
+
+
+def render_img(i):
     t = i / FPS
     for k, (s, e, fn) in enumerate(SCENES):
         if s <= t < e or k == len(SCENES) - 1:
@@ -398,7 +372,7 @@ def render(i):
             if k + 1 < len(SCENES) and t > e - XF:
                 ns, _, nfn = SCENES[k + 1]
                 img = Image.blend(img, nfn(max(0.0, t - ns)), (t - (e - XF)) / XF)
-            return img.convert("RGB").tobytes()
+            return img
 
 
 def main():
@@ -406,8 +380,10 @@ def main():
     audio = os.path.join(HERE, "music.wav")
     mv.mix_audio(audio)
     # заранее нарезаем видеофрагменты в кадры
-    extract_video("milkyway", 0, 12)
-    extract_video("archive1992", ARCH_START, 14)
+    for i in range(0, int(DURATION * FPS), FPS):   # прогон, чтобы собрать список клипов
+        render_img(i)
+    for k, st, d in VIDEOS:
+        extract_video(k, st, d)
     total = int(DURATION * FPS)
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-i", audio,
