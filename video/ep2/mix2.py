@@ -222,8 +222,12 @@ for s in tl:
 mus = reverb(mus, 2.4, .32)
 mus = norm(mus, 1)
 # duck under narration
-ve = np.convolve(np.abs(vo), np.ones(int(.2 * SR)) / int(.2 * SR), mode='same')
-duck = 1 - .5 * np.clip(ve / (np.max(ve) * .12), 0, 1); duck = np.convolve(duck, np.ones(int(.3 * SR)) / int(.3 * SR), mode='same')
+def movavg(x, n):  # centred moving average via cumulative sum (O(N))
+    c = np.cumsum(np.concatenate([[0.], x])); h = n // 2
+    i0 = np.clip(np.arange(len(x)) - h, 0, len(x)); i1 = np.clip(np.arange(len(x)) + n - h, 0, len(x))
+    return (c[i1] - c[i0]) / np.maximum(1, i1 - i0)
+ve = movavg(np.abs(vo), int(.2 * SR))
+duck = 1 - .5 * np.clip(ve / (np.max(ve) * .12), 0, 1); duck = movavg(duck, int(.3 * SR))
 fade = np.ones(N); fo = int(1.5 * SR); fade[-fo:] = np.linspace(1, 0, fo)
 mix = vo + mus * .2 * duck + sfx * .45
 mix = np.tanh(mix * 1.05) / np.tanh(1.05) * fade
