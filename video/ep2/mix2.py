@@ -122,7 +122,7 @@ def _crash():
     return norm(x, .95)
 SFX.update({
     'coin': _coin, 'coins': _coins, 'crowd': lambda: _crowd(4.0), 'hooves': lambda: _hooves(5.0), 'fire': lambda: _fire(5.0), 'water': lambda: _water(2.5), 'crash': _crash,
-    'splat': lambda: norm(lp(noise(.4), 900) * np.exp(-t_(.4) * 10) + ping(110, .3, 20) * .6, .9),
+    'splat': lambda: norm(lp(noise(.4), 900) * np.exp(-t_(.4) * 10) + np.pad(ping(110, .3, 20), (0, int(.1 * SR))) * .6, .9),
     'cart': lambda: norm(sum(np.roll(np.pad(bp(noise(.06), 300, 2000) * np.exp(-t_(.06) * 50), (0, int(3.0 * SR))), int(k * .17 * SR)) for k in range(16)) * .7 + lp(noise(3.06), 150) * .3, .7),
     'clank': lambda: norm(sum(np.sin(2 * np.pi * fq * t_(.6)) * np.exp(-t_(.6) * dc) * a for fq, dc, a in [(523, 7, 1), (1237, 9, .7), (1873, 12, .5), (2964, 16, .35)]), .8),
     'clang': lambda: norm(sum(np.sin(2 * np.pi * fq * t_(.9)) * np.exp(-t_(.9) * dc) * a for fq, dc, a in [(700, 5, 1), (1650, 7, .7), (2600, 10, .5), (3900, 14, .35)]) + hp(noise(.9), 3000) * np.exp(-t_(.9) * 40) * .5, .9),
